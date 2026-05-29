@@ -16,16 +16,15 @@
       color: #fff; -webkit-tap-highlight-color: transparent;
     }
 
-    /* A-Frame fills screen, handles camera feed */
-    #ar-scene { display:none; }
-    #ar-scene.active { display:block; }
+    /* A-Frame fills screen, handles camera feed - visible from start */
+    #ar-scene { position: fixed; inset: 0; z-index: 1; }
 
     /* Three.js overlay canvas on top of A-Frame, transparent */
     #overlay {
-      display: none; position: fixed; inset: 0; z-index: 5;
-      pointer-events: auto; touch-action: none;
+      position: fixed; inset: 0; z-index: 5;
+      pointer-events: none; touch-action: none;
     }
-    #overlay.active { display: block; }
+    #overlay.interactive { pointer-events: auto; }
 
     /* Welcome */
     .welcome-overlay {
@@ -426,7 +425,7 @@ function renderLoop(){
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 function bindEvents(){
-  $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');$('#ar-scene').classList.add('active');$('#overlay').classList.add('active');resizeOverlay();});
+  $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');$('#overlay').classList.add('interactive');resizeOverlay();});
   $('#reset-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();userTransform.scale=1;transformGesture=null;activeTouchPoints.clear();cancelAllVoices();setPrompt('视角已重置，请重新对准识别卡');});
   $('#synth-marker').addEventListener('markerFound',()=>onMarkerFound('synth'));
   $('#synth-marker').addEventListener('markerLost',()=>{if(state.activeMarker==='synth')onMarkerLost();});
