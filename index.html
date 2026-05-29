@@ -115,6 +115,11 @@
       smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
     </a-marker>
 
+    <!-- 🐤 金丝雀: 用已验证的 pipa.patt 测试 AR.js 是否正常工作 -->
+    <a-marker id="canary-marker" type="pattern" url="assets/patterns/pattern-pipa.patt"
+      smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+    </a-marker>
+
     <a-entity camera></a-entity>
   </a-scene>
 
@@ -735,6 +740,10 @@ function bindEvents() {
   $('#synth-marker').addEventListener('markerLost',()=>{if(state.activeMarker==='synth')onMarkerLost();});
   $('#drum-marker').addEventListener('markerFound',()=>onMarkerFound('drum'));
   $('#drum-marker').addEventListener('markerLost',()=>{if(state.activeMarker==='drum')onMarkerLost();});
+  // 金丝雀: 测试 AR.js marker 检测是否正常
+  $('#canary-marker').addEventListener('markerFound',()=>log('🐤 CANARY FOUND! AR.js 工作正常'));
+  $('#canary-marker').addEventListener('markerLost',()=>log('🐤 canary lost'));
+  log('🐤 Canary marker registered — 请先用琵琶标记测试 AR.js 是否正常');
 
   // Show debug on load
   setTimeout(()=>$('#debug').classList.add('show'), 1000);
