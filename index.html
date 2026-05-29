@@ -6,29 +6,28 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>AR Synth Workstation</title>
+
   <script src="aframe.min.js"></script>
   <script src="aframe-ar.js"></script>
+
   <style>
+    :root {
+      --bg: #07090b; --panel: #121821; --text: #fff8e7;
+      --accent: #f7c24d; --accent-2: #63e6be; --line: rgba(255,255,255,0.14);
+    }
     * { box-sizing: border-box; }
-    html, body { width:100%; height:100%; margin:0; padding:0; overflow:hidden; background:#000; }
-    body {
+    html, body {
+      width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+      background: var(--bg);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: #fff; -webkit-tap-highlight-color: transparent;
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
     }
-
-    /* A-Frame fills screen, handles camera feed - visible from start */
-    #ar-scene { position: fixed; inset: 0; z-index: 1; }
-
-    /* Three.js overlay canvas on top of A-Frame, transparent */
-    #overlay {
-      position: fixed; inset: 0; z-index: 5;
-      pointer-events: none; touch-action: none;
-    }
-    #overlay.interactive { pointer-events: auto; }
 
     /* Welcome */
     .welcome-overlay {
-      position: fixed; inset: 0; z-index: 100;
+      position: fixed; inset: 0; z-index: 1000;
       display: flex; flex-direction: column; justify-content: center; align-items: center;
       background: rgba(0,0,0,0.72);
       backdrop-filter: blur(30px) saturate(1.8);
@@ -51,13 +50,17 @@
     }
     .welcome-btn:active { background: rgba(247,194,77,0.38); transform: scale(0.96); }
 
+    /* AR Scene */
+    #ar-scene { position: fixed; inset: 0; z-index: 1; }
+
     /* HUD */
-    .hud { position: fixed; z-index: 10; top: 16px; left: 16px; display: flex; gap: 10px; pointer-events: none; }
+    .hud { position: fixed; z-index: 10; top: 16px; left: 16px; display: flex; gap: 10px; flex-wrap: wrap; pointer-events: none; }
     .hud > * { pointer-events: auto; }
     .hud-btn {
       border: 0; border-radius: 8px; background: rgba(247,194,77,0.92);
       color: #101010; font-weight: 900; font-size: 13px;
       min-height: 40px; padding: 0 14px; cursor: pointer;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     }
 
     /* Prompt */
@@ -65,12 +68,13 @@
       position: fixed; z-index: 10; left: 50%; bottom: 28px; transform: translateX(-50%);
       padding: 10px 18px; border-radius: 8px;
       border: 1px solid rgba(99,230,190,0.34);
-      background: rgba(7,13,13,0.62); color: #eafff6;
-      font-size: 14px; font-weight: 900; text-align: center;
+      background: rgba(7,13,13,0.62);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      color: #eafff6; font-size: 14px; font-weight: 900; text-align: center;
       box-shadow: 0 0 24px rgba(99,230,190,0.20);
-      transition: opacity 0.22s;
+      transition: opacity 0.22s, transform 0.22s;
     }
-    .ar-active .stage-prompt { opacity: 0.3; }
+    .ar-active .stage-prompt { opacity: 0.3; transform: translateX(-50%) translateY(10px) scale(0.92); }
 
     /* Debug */
     .debug-panel {
@@ -79,31 +83,14 @@
       padding: 8px 12px; border-radius: 8px;
       border: 1px solid rgba(99,230,190,0.4);
       background: rgba(2,7,9,0.78); color: #dcfff4;
-      font-family: monospace; font-size: 11px; line-height: 1.35;
+      font-family: ui-monospace, monospace; font-size: 11px; line-height: 1.35;
       pointer-events: none; display: none;
     }
     .debug-panel.show { display: block; }
     .debug-panel b { color: #f7c24d; }
   </style>
 </head>
-<body style="margin:0;overflow:hidden;">
-
-  <!-- A-Frame handles camera + AR tracking -->
-  <a-scene id="ar-scene"
-    embedded
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true;"
-    arjs="sourceType: webcam; debugUIEnabled: false;">
-
-    <a-marker id="synth-marker" type="pattern" url="assets/patterns/pattern-hechengqi.patt"
-      smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2"></a-marker>
-    <a-marker id="drum-marker" type="pattern" url="assets/patterns/pattern-drum.patt"
-      smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2"></a-marker>
-    <a-entity camera></a-entity>
-  </a-scene>
-
-  <!-- Independent Three.js overlay canvas -->
-  <canvas id="overlay"></canvas>
+<body>
 
   <!-- Welcome -->
   <div class="welcome-overlay" id="welcome">
@@ -111,6 +98,26 @@
     <p>对准合成器卡或鼓机卡，即可在 AR 中演奏</p>
     <button class="welcome-btn" id="start-btn">启动 AR 体验</button>
   </div>
+
+  <!-- AR Scene -->
+  <a-scene id="ar-scene"
+    embedded
+    vr-mode-ui="enabled: false"
+    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+    renderer="antialias: true; alpha: true; powerPreference: high-performance">
+
+    <!-- 合成器 marker -->
+    <a-marker id="synth-marker" type="pattern" url="assets/patterns/pattern-hechengqi.patt"
+      smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+    </a-marker>
+
+    <!-- 鼓机 marker -->
+    <a-marker id="drum-marker" type="pattern" url="assets/patterns/pattern-drum.patt"
+      smooth="true" smoothCount="5" smoothTolerance="0.01" smoothThreshold="2">
+    </a-marker>
+
+    <a-entity camera></a-entity>
+  </a-scene>
 
   <!-- HUD -->
   <div class="hud" id="hud">
@@ -125,328 +132,630 @@
 
 <script>
 // ===================================================================
+// AR Synth Workstation v2
+// Three.js groups added directly to AR.js marker object3D
+// Audio engine: Web Audio API
+// ===================================================================
+
 const $ = s => document.querySelector(s);
 const THREE = AFRAME.THREE;
 
 // ── State ──────────────────────────────────────────────────────────
 const state = {
-  currentPreset:'SYNTH', currentMode:'synth', currentWave:'SAW',
-  octaveShift:0, cutoff:0.62, reso:0.28, pitchBend:0, mod:0,
-  glide:false, arp:false, hold:false,
-  faders:{A:0.05,D:0.28,S:0.62,R:0.30,FX:0.22,VOL:0.82},
-  activeMarker:null, lastFreq:null,
+  currentPreset: 'SYNTH', currentMode: 'synth', currentWave: 'SAW',
+  octaveShift: 0, cutoff: 0.62, reso: 0.28,
+  pitchBend: 0, mod: 0, glide: false, arp: false, hold: false,
+  faders: { A:0.05, D:0.28, S:0.62, R:0.30, FX:0.22, VOL:0.82 },
+  activeMarker: null, lastFreq: null,
 };
+
 const PRESETS = {
-  SYNTH:{color:0x3aa6ff,mode:'synth'},GUITAR:{color:0x39e59f,mode:'guitar'},
-  DRUM:{color:0xffa23a,mode:'drum'},BASS:{color:0xb26bff,mode:'bass'}
+  SYNTH: { color: 0x3aa6ff, mode: 'synth' },
+  GUITAR: { color: 0x39e59f, mode: 'guitar' },
+  DRUM: { color: 0xffa23a, mode: 'drum' },
+  BASS: { color: 0xb26bff, mode: 'bass' }
 };
 const WAVES = {
-  SAW:{color:0x3aa6ff,osc:'sawtooth'},SQUARE:{color:0xb26bff,osc:'square'},
-  SINE:{color:0x39e59f,osc:'sine'}
+  SAW: { color: 0x3aa6ff, osc: 'sawtooth' },
+  SQUARE: { color: 0xb26bff, osc: 'square' },
+  SINE: { color: 0x39e59f, osc: 'sine' }
 };
 const FADERS = [
-  {id:'A',label:'A',value:0.05,color:0x3aa6ff},{id:'D',label:'D',value:0.28,color:0x3aa6ff},
-  {id:'S',label:'S',value:0.62,color:0x3aa6ff},{id:'R',label:'R',value:0.30,color:0x3aa6ff},
-  {id:'FX',label:'FX',value:0.22,color:0xb26bff},{id:'VOL',label:'VOL',value:0.82,color:0x39e59f}
+  { id:'A',label:'A',value:0.05,color:0x3aa6ff }, { id:'D',label:'D',value:0.28,color:0x3aa6ff },
+  { id:'S',label:'S',value:0.62,color:0x3aa6ff }, { id:'R',label:'R',value:0.30,color:0x3aa6ff },
+  { id:'FX',label:'FX',value:0.22,color:0xb26bff }, { id:'VOL',label:'VOL',value:0.82,color:0x39e59f }
 ];
 const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const WHITE_PCS = new Set([0,2,4,5,7,9,11]);
-const DRUM_CONTROLS = {tone:0.62,decay:0.52,drive:0.25,space:0.35,level:0.82};
+const DRUM_CONTROLS = { tone:0.62, decay:0.52, drive:0.25, space:0.35, level:0.82 };
 
-// ── Three.js (independent renderer) ────────────────────────────────
-let scene, camera, renderer, raycaster, pointer;
-let synthGroup, drumGroup, activeGroup=null;
+// AR scale: model is ~5.5 units in design space; we want ~25cm in AR (meters)
+const AR_MODEL_SCALE = 0.045;
+
+// ── Three.js (uses A-Frame's internal THREE, shares its scene) ─────
+let raycaster, pointer;
+let synthGroup, drumGroup, activeGroup = null;
 let screenMaterial, drumScreenMaterial;
-let interactives=[];
-let ui={presetButtons:new Map(),waveButtons:new Map(),perfButtons:new Map(),
-        keys:new Map(),faders:new Map(),knobs:new Map(),strips:new Map()};
-let dragState=null, activePointers=new Map(), activeTouchPoints=new Map();
-let transformGesture=null, userTransform={scale:1};
-let drumControls={...DRUM_CONTROLS}, drumControlMeshes=new Map();
+let interactives = [];
+let ui = { presetButtons: new Map(), waveButtons: new Map(), perfButtons: new Map(),
+           keys: new Map(), faders: new Map(), knobs: new Map(), strips: new Map() };
+let dragState = null;
+let activePointers = new Map();
+let activeTouchPoints = new Map();
+let transformGesture = null;
+let userTransform = { scale: 1 };
+let drumControls = { ...DRUM_CONTROLS };
+let drumControlMeshes = new Map();
 
 // ── Audio ──────────────────────────────────────────────────────────
-let audioCtx=null, audioUnlocked=false, masterGain, fxSend, delayNode, delayFeedback;
+let audioCtx = null, audioUnlocked = false;
+let masterGain, fxSend, delayNode, delayFeedback;
 
 // ── Utils ──────────────────────────────────────────────────────────
-function clamp(v,min,max){return Math.max(min,Math.min(max,v));}
-function lerp(a,b,t){return a+(b-a)*t;}
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
-function mat({color,emissive=0,roughness=0.62,metalness=0.1,transparent=false,opacity=1}){
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function lerp(a, b, t) { return a + (b-a)*t; }
+function dist(a, b) { return Math.hypot(a.x-b.x, a.y-b.y); }
+function mat({color, emissive=0, roughness=0.62, metalness=0.1, transparent=false, opacity=1}) {
   return new THREE.MeshStandardMaterial({color,emissive,emissiveIntensity:emissive?0.4:0,roughness,metalness,transparent,opacity});
 }
-function isDescendantOf(obj,parent){let c=obj;while(c){if(c===parent)return true;c=c.parent;}return false;}
-function labelTexture(lines,opts={}){
-  const w=opts.width||256,h=opts.height||96;
-  const cv=document.createElement('canvas');cv.width=w;cv.height=h;
-  const ctx=cv.getContext('2d');ctx.clearRect(0,0,w,h);
-  if(opts.background){ctx.fillStyle=opts.background;ctx.fillRect(0,0,w,h);}
-  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=opts.color||'#f6fff8';
+function isDescendantOf(obj, parent) {
+  let cur=obj; while(cur) { if(cur===parent) return true; cur=cur.parent; } return false;
+}
+function log(msg) { console.log('[AR-Synth]', msg); const p=$('#prompt'); if(p) p.textContent=msg; }
+
+// ── Label texture ──────────────────────────────────────────────────
+function labelTexture(lines, opts={}) {
+  const w=opts.width||256, h=opts.height||96;
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+  if (opts.background) { ctx.fillStyle=opts.background; ctx.fillRect(0,0,w,h); }
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillStyle=opts.color||'#f6fff8';
   const list=Array.isArray(lines)?lines:[lines];
   const fs=opts.fontSize||(list.length>1?26:34);
-  ctx.font=`800 ${fs}px Arial,"PingFang SC","Microsoft YaHei",sans-serif`;
+  ctx.font=`800 ${fs}px Arial, "PingFang SC", "Microsoft YaHei", sans-serif`;
   const step=h/(list.length+1);
-  list.forEach((l,i)=>ctx.fillText(l,w/2,step*(i+1)));
-  const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;return tex;
+  list.forEach((line,i)=>ctx.fillText(line,w/2,step*(i+1)));
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace; return tex;
 }
-function addLabel(parent,text,x,y,z,w,h,opts={}){
+function addLabel(parent,text,x,y,z,w,h,opts={}) {
   const m2=new THREE.MeshBasicMaterial({map:labelTexture(text,opts),transparent:true,depthWrite:false});
   const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m2);
-  mesh.position.set(x,y,z);parent.add(mesh);return mesh;
+  mesh.position.set(x,y,z); parent.add(mesh); return mesh;
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// THREE.JS INIT — independent renderer, separate canvas
+// BUILD SYNTH + DRUM GROUPS (into A-Frame's THREE scene)
 // ═══════════════════════════════════════════════════════════════════
-function initThreeJS(){
-  const canvas = $('#overlay');
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(42, 2, 0.1, 100);
-  camera.position.set(0, 0, 6.2);
-  // Independent WebGLRenderer targeting our overlay canvas
-  renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true, powerPreference:'high-performance'});
-  renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.8));
+function buildModels() {
+  const aframeScene = $('#ar-scene').object3D;
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.9));
-  const key=new THREE.DirectionalLight(0xffffff,1.55);key.position.set(1.8,3.2,4.0);scene.add(key);
-  const rim=new THREE.DirectionalLight(0x67f4ff,1.1);rim.position.set(-2.4,1.2,2.8);scene.add(rim);
+  // Add lights to the A-Frame scene
+  aframeScene.add(new THREE.AmbientLight(0xffffff, 1.2));
 
+  // Build synth group
   synthGroup = new THREE.Group(); synthGroup.name='AR_Mini_Synth_Workstation';
-  synthGroup.visible = false; synthGroup.matrixAutoUpdate = false; scene.add(synthGroup);
+  synthGroup.visible = false;
+  synthGroup.scale.set(AR_MODEL_SCALE, AR_MODEL_SCALE, AR_MODEL_SCALE);
+  buildSynthModel();
+  log('Synth model built');
+
+  // Build drum group
   drumGroup = new THREE.Group(); drumGroup.name='QR_Drum_Machine';
-  drumGroup.visible = false; drumGroup.matrixAutoUpdate = false; scene.add(drumGroup);
+  drumGroup.visible = false;
+  drumGroup.scale.set(AR_MODEL_SCALE, AR_MODEL_SCALE, AR_MODEL_SCALE);
+  buildDrumMachineModel();
+  log('Drum model built');
 
-  buildSynthModel(); buildDrumMachineModel();
-  activeGroup = synthGroup;
-  bindCanvasEvents(canvas);
-  resizeOverlay();
-}
-
-function resizeOverlay(){
-  const canvas=$('#overlay');
-  const w=window.innerWidth, h=window.innerHeight;
-  if(canvas.width!==w||canvas.height!==h){
-    canvas.width=w; canvas.height=h;
-    renderer.setSize(w,h,false);
-    camera.aspect=w/Math.max(1,h); camera.updateProjectionMatrix();
-  }
+  bindCanvasEvents($('#ar-scene').canvas);
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SYNTH MODEL BUILDER (same Three.js code)
+// SYNTHESIZER MODEL BUILDER
 // ═══════════════════════════════════════════════════════════════════
-function buildSynthModel(){
-  interactives=[];
+function buildSynthModel() {
+  interactives = [];
   const bm=mat({color:0x141a22,roughness:0.55,metalness:0.32});
   const sm=mat({color:0x07090d,roughness:0.72,metalness:0.22});
   const pm=mat({color:0x1c2632,roughness:0.48,metalness:0.36});
-  const base=new THREE.Mesh(new THREE.BoxGeometry(5.55,2.32,0.30),bm);base.position.set(0,-0.12,-0.08);synthGroup.add(base);
-  const bl=new THREE.Mesh(new THREE.BoxGeometry(5.55,0.16,0.36),sm);bl.position.set(0,1.02,0.06);synthGroup.add(bl);
-  const panel=new THREE.Group();panel.name='synth_panel';panel.position.set(0,0.43,0.10);panel.rotation.x=-0.18;synthGroup.add(panel);
-  panel.add(new THREE.Mesh(new THREE.BoxGeometry(5.30,1.16,0.18),pm));
-  addLabel(panel,'AR MINI SYNTH WORKSTATION',0,0.48,0.112,2.4,0.14,{fontSize:20,color:'#dbfff5'});
 
-  // Preset buttons
+  const base=new THREE.Mesh(new THREE.BoxGeometry(5.55,2.32,0.30),bm);
+  base.position.set(0,-0.12,-0.08); synthGroup.add(base);
+  const backLip=new THREE.Mesh(new THREE.BoxGeometry(5.55,0.16,0.36),sm);
+  backLip.position.set(0,1.02,0.06); synthGroup.add(backLip);
+
+  const panel=new THREE.Group(); panel.name='synth_panel';
+  panel.position.set(0,0.43,0.10); panel.rotation.x=-0.18; synthGroup.add(panel);
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(5.30,1.16,0.18),pm);
+  plate.position.set(0,0,0); panel.add(plate);
+
+  addLabel(panel,'AR MINI SYNTH WORKSTATION',0,0.48,0.112,2.4,0.14,{fontSize:20,color:'#dbfff5'});
+  buildPresetButtons(panel); buildWaveButtons(panel); buildFilterKnobs(panel);
+  buildFaders(panel); buildPerformanceButtons(panel); buildScreen(panel);
+  buildTouchStrips(panel); buildKeyboard();
+  selectPreset('SYNTH'); selectWave('SAW'); updateDisplay('SYNTH','SAW','READY');
+}
+
+function buildPresetButtons(panel) {
   addLabel(panel,'PRESET',-2.08,0.31,0.18,0.86,0.13,{fontSize:18,color:'#9cecff'});
   [['SYNTH',-2.08,0.10],['GUITAR',-2.08,-0.16],['DRUM',-2.08,-0.42],['BASS',-2.08,-0.68]].forEach(([id,x,y])=>{
-    const m=createButton(panel,id,x,y,PRESETS[id].color,{kind:'preset',id},{w:0.78,h:0.22});ui.presetButtons.set(id,m);
+    const m=createButton(panel,id,x,y,PRESETS[id].color,{kind:'preset',id},{w:0.78,h:0.22});
+    ui.presetButtons.set(id,m);
   });
-  // Wave buttons
+}
+
+function buildWaveButtons(panel) {
   addLabel(panel,'WAVE',-1.15,0.31,0.18,0.78,0.13,{fontSize:18,color:'#9cecff'});
   [['SAW',-1.15,0.10],['SQUARE',-1.15,-0.18],['SINE',-1.15,-0.46]].forEach(([id,x,y])=>{
-    const m=createButton(panel,id,x,y,WAVES[id].color,{kind:'wave',id},{w:0.78,h:0.22});ui.waveButtons.set(id,m);
+    const m=createButton(panel,id,x,y,WAVES[id].color,{kind:'wave',id},{w:0.78,h:0.22});
+    ui.waveButtons.set(id,m);
   });
-  // Filter knobs
+}
+
+function buildFilterKnobs(panel) {
   addLabel(panel,'FILTER',-0.12,0.31,0.18,0.76,0.13,{fontSize:18,color:'#9cecff'});
-  const ck=createKnob(panel,'CUTOFF',-0.32,-0.06,0.27,state.cutoff,0x3aa6ff,'cutoff');ui.knobs.set('cutoff',ck);
-  const rk=createKnob(panel,'RESO',0.28,-0.06,0.20,state.reso,0xffa23a,'reso');ui.knobs.set('reso',rk);
-  // Faders
+  const c=createKnob(panel,'CUTOFF',-0.32,-0.06,0.27,state.cutoff,0x3aa6ff,'cutoff');
+  const r=createKnob(panel,'RESO',0.28,-0.06,0.20,state.reso,0xffa23a,'reso');
+  ui.knobs.set('cutoff',c); ui.knobs.set('reso',r);
+}
+
+function createKnob(parent,label,x,y,radius,value,color,id) {
+  const g=new THREE.Group(); g.position.set(x,y,0.16); parent.add(g);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,0.09,36),
+    mat({color:0x0a0d12,emissive:color,roughness:0.34,metalness:0.45}));
+  base.rotation.x=Math.PI/2; g.add(base);
+  const ind=new THREE.Mesh(new THREE.BoxGeometry(radius*0.10,radius*0.82,0.026),mat({color,emissive:color}));
+  ind.position.set(0,radius*0.26,0.07); g.add(ind);
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(radius*2.25,radius*2.25,0.04),
+    new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  hit.position.set(x,y,0.24); parent.add(hit);
+  addInteractive(hit,{kind:'knob',id});
+  addLabel(parent,label,x,y-radius-0.16,0.20,radius*2.2,0.13,{fontSize:18,color:'#f6fff8'});
+  const knob={group:g,indicator:ind,value,color}; updateKnobVisual(knob); return knob;
+}
+function updateKnobVisual(knob) {
+  const a=lerp(-2.25,2.25,knob.value); knob.indicator.rotation.z=-a;
+  knob.group.children[0].material.emissiveIntensity=0.12+knob.value*0.7;
+}
+
+function buildFaders(panel) {
   addLabel(panel,'ENVELOPE / FX',1.33,0.31,0.18,1.46,0.13,{fontSize:18,color:'#9cecff'});
-  FADERS.forEach((it,i)=>{const f=createFader(panel,it.label,0.62+i*0.29,-0.18,it.color,it.id,it.value);ui.faders.set(it.id,f);});
-  // Perf buttons
-  [-0.36,0.04,0.44].forEach((x,i)=>{const id=['GLIDE','ARP','HOLD'][i];ui.perfButtons.set(id,createButton(panel,id,x,-0.68,0x63e6be,{kind:'performance',id},{w:0.34,h:0.22}));});
-  // Screen
-  const scr=new THREE.Mesh(new THREE.BoxGeometry(1.00,0.46,0.07),mat({color:0x061211,emissive:0x113a31,roughness:0.22}));scr.position.set(2.18,0.03,0.16);panel.add(scr);
-  screenMaterial=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false});
-  panel.add(new THREE.Mesh(new THREE.PlaneGeometry(0.86,0.34),screenMaterial)).position.set(2.18,0.03,0.22);
-  // Touch strips
-  [['PITCH',-2.55,-0.24,0xffdf6e],['MOD',-2.55,-0.62,0x63e6be]].forEach(([id,x,y,color])=>{
-    panel.add(new THREE.Mesh(new THREE.BoxGeometry(0.18,0.30,0.05),mat({color:0x0a0e13,emissive:color}))).position.set(x,y,0.19);
-    const f=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.06,0.05),mat({color,emissive:color}));f.position.set(x,y,0.24);panel.add(f);
-    const hit=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.42,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));hit.position.set(x,y,0.28);panel.add(hit);addInteractive(hit,{kind:'strip',id});
-    addLabel(panel,id,x+0.30,y,0.21,0.36,0.12,{fontSize:18,color:'#f6fff8'});ui.strips.set(id,{fill:f,centerY:y,color,value:id==='PITCH'?0.5:0});
+  FADERS.forEach((item,i)=>{
+    const fader=createFader(panel,item.label,0.62+i*0.29,-0.18,item.color,item.id,item.value);
+    ui.faders.set(item.id,fader);
   });
-  updateStripVisual('PITCH');updateStripVisual('MOD');
-  // Keyboard
-  const kb=new THREE.Mesh(new THREE.BoxGeometry(5.18,0.96,0.16),mat({color:0x07090d,roughness:0.58,metalness:0.28}));kb.position.set(0.12,-0.72,0.08);synthGroup.add(kb);
+}
+function createFader(parent,label,x,y,color,id,value) {
+  const len=0.58;
+  const track=new THREE.Mesh(new THREE.BoxGeometry(0.05,len,0.035),mat({color:0x070b10}));
+  track.position.set(x,y,0.17); parent.add(track);
+  const fill=new THREE.Mesh(new THREE.BoxGeometry(0.062,len,0.02),mat({color,emissive:color,transparent:true,opacity:0.42}));
+  fill.position.set(x,y,0.19); parent.add(fill);
+  const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.09,0.065),mat({color,emissive:color,roughness:0.3}));
+  parent.add(thumb);
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(0.25,len+0.14,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  hit.position.set(x,y,0.25); parent.add(hit);
+  addInteractive(hit,{kind:'fader',id});
+  addLabel(parent,label,x,y-len/2-0.15,0.20,0.22,0.12,{fontSize:20,color:'#f6fff8'});
+  const fader={x,y,length:len,thumb,fill,value,color}; updateFaderVisual(fader); return fader;
+}
+function updateFaderVisual(f) {
+  const ty=f.y-f.length/2+f.value*f.length; f.thumb.position.set(f.x,ty,0.24);
+  f.fill.scale.y=Math.max(0.04,f.value); f.fill.position.y=f.y-f.length/2+(f.length*f.value)/2;
+  f.thumb.material.emissiveIntensity=0.18+f.value*0.75;
+}
+
+function buildPerformanceButtons(panel) {
+  [-0.36,0.04,0.44].forEach((x,i)=>{
+    const id=['GLIDE','ARP','HOLD'][i];
+    const m=createButton(panel,id,x,-0.68,0x63e6be,{kind:'performance',id},{w:0.34,h:0.22});
+    ui.perfButtons.set(id,m);
+  });
+}
+
+function buildScreen(panel) {
+  const scr=new THREE.Mesh(new THREE.BoxGeometry(1.00,0.46,0.07),mat({color:0x061211,emissive:0x113a31,roughness:0.22}));
+  scr.position.set(2.18,0.03,0.16); panel.add(scr);
+  screenMaterial=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false});
+  const disp=new THREE.Mesh(new THREE.PlaneGeometry(0.86,0.34),screenMaterial);
+  disp.position.set(2.18,0.03,0.22); panel.add(disp);
+}
+
+function buildTouchStrips(panel) {
+  [['PITCH',-2.55,-0.24,0xffdf6e],['MOD',-2.55,-0.62,0x63e6be]].forEach(([id,x,y,color])=>{
+    const trk=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.30,0.05),mat({color:0x0a0e13,emissive:color}));
+    trk.position.set(x,y,0.19); panel.add(trk);
+    const f=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.06,0.05),mat({color,emissive:color}));
+    f.position.set(x,y,0.24); panel.add(f);
+    const hit=new THREE.Mesh(new THREE.BoxGeometry(0.28,0.42,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+    hit.position.set(x,y,0.28); panel.add(hit);
+    addInteractive(hit,{kind:'strip',id});
+    addLabel(panel,id,x+0.30,y,0.21,0.36,0.12,{fontSize:18,color:'#f6fff8'});
+    ui.strips.set(id,{fill:f,centerY:y,color,value:id==='PITCH'?0.5:0});
+  });
+  updateStripVisual('PITCH'); updateStripVisual('MOD');
+}
+
+function buildKeyboard() {
+  const kb=new THREE.Mesh(new THREE.BoxGeometry(5.18,0.96,0.16),mat({color:0x07090d,roughness:0.58,metalness:0.28}));
+  kb.position.set(0.12,-0.72,0.08); synthGroup.add(kb);
   addLabel(synthGroup,'25 KEY TOUCH SYNTH',1.54,-1.20,0.28,1.35,0.12,{fontSize:18,color:'#9cecff'});
-  createOctaveButton('OCT -',-2.28,-1.16,-12);createOctaveButton('OCT +',-1.72,-1.16,12);
-  const sm2=48,em2=72,wc=Array.from({length:em2-sm2+1},(_,i)=>sm2+i).filter(m=>WHITE_PCS.has(m%12)).length,ww=4.84/wc;let wi=0;
-  for(let midi=sm2;midi<=em2;midi++){const pc=midi%12;
-    if(WHITE_PCS.has(pc)){const x=(wi-(wc-1)/2)*ww+0.15;const k=new THREE.Mesh(new THREE.BoxGeometry(ww*0.92,0.78,0.12),mat({color:0xf5f0df,roughness:0.38,metalness:0.05}));k.position.set(x,-0.78,0.22);k.userData={baseColor:0xf5f0df,activeColor:0x3aa6ff,baseZ:0.22,midi};synthGroup.add(k);addInteractive(k,{kind:'key',midi});ui.keys.set(midi,k);if(NOTE_NAMES[pc]==='C')addLabel(synthGroup,`C${Math.floor(midi/12)-1}`,x,-1.11,0.31,ww*0.70,0.10,{fontSize:18,color:'#10131a'});wi++;}
-    else{const x=(wi-1-(wc-1)/2)*ww+ww*0.48+0.15;const k=new THREE.Mesh(new THREE.BoxGeometry(ww*0.58,0.47,0.16),mat({color:0x05070a,roughness:0.42,metalness:0.1}));k.position.set(x,-0.59,0.34);k.userData={baseColor:0x05070a,activeColor:0xb26bff,baseZ:0.34,midi};synthGroup.add(k);addInteractive(k,{kind:'key',midi});ui.keys.set(midi,k);}
+  createOctaveButton('OCT -',-2.28,-1.16,-12); createOctaveButton('OCT +',-1.72,-1.16,12);
+
+  const startMidi=48,endMidi=72;
+  const whiteCount=Array.from({length:endMidi-startMidi+1},(_,i)=>startMidi+i).filter(m=>WHITE_PCS.has(m%12)).length;
+  const whiteW=4.84/whiteCount; let wi=0;
+  for (let midi=startMidi;midi<=endMidi;midi++) {
+    const pc=midi%12;
+    if (WHITE_PCS.has(pc)) {
+      const x=(wi-(whiteCount-1)/2)*whiteW+0.15;
+      const key=new THREE.Mesh(new THREE.BoxGeometry(whiteW*0.92,0.78,0.12),mat({color:0xf5f0df,roughness:0.38,metalness:0.05}));
+      key.position.set(x,-0.78,0.22);
+      key.userData={baseColor:0xf5f0df,activeColor:0x3aa6ff,baseZ:0.22,midi};
+      synthGroup.add(key); addInteractive(key,{kind:'key',midi}); ui.keys.set(midi,key);
+      if (NOTE_NAMES[pc]==='C') addLabel(synthGroup,`C${Math.floor(midi/12)-1}`,x,-1.11,0.31,whiteW*0.70,0.10,{fontSize:18,color:'#10131a'});
+      wi++;
+    } else {
+      const x=(wi-1-(whiteCount-1)/2)*whiteW+whiteW*0.48+0.15;
+      const key=new THREE.Mesh(new THREE.BoxGeometry(whiteW*0.58,0.47,0.16),mat({color:0x05070a,roughness:0.42,metalness:0.1}));
+      key.position.set(x,-0.59,0.34);
+      key.userData={baseColor:0x05070a,activeColor:0xb26bff,baseZ:0.34,midi};
+      synthGroup.add(key); addInteractive(key,{kind:'key',midi}); ui.keys.set(midi,key);
+    }
   }
-  selectPreset('SYNTH');selectWave('SAW');updateDisplay('SYNTH','SAW','READY');
 }
-function createOctaveButton(label,x,y,d){const m=createButton(synthGroup,label,x,y,0xffdf6e,{kind:'octave',semitoneDelta:d},{w:0.45,h:0.18});m.position.z=0.32;}
-function createButton(parent,label,x,y,color,interaction,size={w:0.58,h:0.22}){
-  const m=new THREE.Mesh(new THREE.BoxGeometry(size.w,size.h,0.08),mat({color:0x26313e,roughness:0.42,metalness:0.25}));m.position.set(x,y,0.13);m.userData={baseColor:0x26313e,activeColor:color,isActive:false};parent.add(m);addInteractive(m,interaction);addLabel(parent,label,x,y,0.18,size.w*0.9,size.h*0.7,{fontSize:26,color:'#f6fff8'});return m;
+function createOctaveButton(label,x,y,delta) {
+  const m=createButton(synthGroup,label,x,y,0xffdf6e,{kind:'octave',semitoneDelta:delta},{w:0.45,h:0.18});
+  m.position.z=0.32;
 }
-function createKnob(parent,label,x,y,r,v,color,id){
-  const g=new THREE.Group();g.position.set(x,y,0.16);parent.add(g);
-  g.add(new THREE.Mesh(new THREE.CylinderGeometry(r,r,0.09,36),mat({color:0x0a0d12,emissive:color,roughness:0.34,metalness:0.45}))).rotation.x=Math.PI/2;
-  const ind=new THREE.Mesh(new THREE.BoxGeometry(r*0.10,r*0.82,0.026),mat({color,emissive:color}));ind.position.set(0,r*0.26,0.07);g.add(ind);
-  const hit=new THREE.Mesh(new THREE.BoxGeometry(r*2.25,r*2.25,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));hit.position.set(x,y,0.24);parent.add(hit);addInteractive(hit,{kind:'knob',id});addLabel(parent,label,x,y-r-0.16,0.20,r*2.2,0.13,{fontSize:18,color:'#f6fff8'});
-  const knob={group:g,indicator:ind,value:v,color};updateKnobVisual(knob);return knob;
+
+function createButton(parent,label,x,y,color,interaction,size={w:0.58,h:0.22}) {
+  const mat2=mat({color:0x26313e,emissive:0,roughness:0.42,metalness:0.25});
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(size.w,size.h,0.08),mat2);
+  mesh.position.set(x,y,0.13);
+  mesh.userData={baseColor:0x26313e,activeColor:color,isActive:false};
+  parent.add(mesh); addInteractive(mesh,interaction);
+  addLabel(parent,label,x,y,0.18,size.w*0.9,size.h*0.7,{fontSize:26,color:'#f6fff8'});
+  return mesh;
 }
-function updateKnobVisual(k){const a=lerp(-2.25,2.25,k.value);k.indicator.rotation.z=-a;k.group.children[0].material.emissiveIntensity=0.12+k.value*0.7;}
-function createFader(parent,label,x,y,color,id,value){
-  const len=0.58;parent.add(new THREE.Mesh(new THREE.BoxGeometry(0.05,len,0.035),mat({color:0x070b10}))).position.set(x,y,0.17);
-  const fill=new THREE.Mesh(new THREE.BoxGeometry(0.062,len,0.02),mat({color,emissive:color,transparent:true,opacity:0.42}));fill.position.set(x,y,0.19);parent.add(fill);
-  const thumb=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.09,0.065),mat({color,emissive:color,roughness:0.3}));parent.add(thumb);
-  const hit=new THREE.Mesh(new THREE.BoxGeometry(0.25,len+0.14,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));hit.position.set(x,y,0.25);parent.add(hit);addInteractive(hit,{kind:'fader',id});addLabel(parent,label,x,y-len/2-0.15,0.20,0.22,0.12,{fontSize:20,color:'#f6fff8'});
-  const fader={x,y,length:len,thumb,fill,value,color};updateFaderVisual(fader);return fader;
-}
-function updateFaderVisual(f){const ty=f.y-f.length/2+f.value*f.length;f.thumb.position.set(f.x,ty,0.24);f.fill.scale.y=Math.max(0.04,f.value);f.fill.position.y=f.y-f.length/2+(f.length*f.value)/2;f.thumb.material.emissiveIntensity=0.18+f.value*0.75;}
-function addInteractive(mesh,interaction){mesh.userData.interaction=interaction;interactives.push(mesh);}
+
+function addInteractive(mesh, interaction) { mesh.userData.interaction=interaction; interactives.push(mesh); }
 
 // ═══════════════════════════════════════════════════════════════════
 // DRUM MACHINE MODEL
 // ═══════════════════════════════════════════════════════════════════
-function buildDrumMachineModel(){
+function buildDrumMachineModel() {
   drumControlMeshes=new Map();
-  const bm=mat({color:0x101821,roughness:0.54,metalness:0.38}),sm=mat({color:0x05080d,roughness:0.62,metalness:0.30}),pm=mat({color:0x17202a,roughness:0.46,metalness:0.42});
-  drumGroup.add(new THREE.Mesh(new THREE.BoxGeometry(5.65,2.20,0.32),bm)).position.set(0,-0.08,-0.10);
-  drumGroup.add(new THREE.Mesh(new THREE.BoxGeometry(5.70,0.18,0.28),sm)).position.set(0,-1.10,0.04);
-  const panel=new THREE.Group();panel.name='drum_panel';panel.position.set(0,0.08,0.14);panel.rotation.x=-0.15;drumGroup.add(panel);
-  panel.add(new THREE.Mesh(new THREE.BoxGeometry(5.34,1.78,0.18),pm));
+  const bm=mat({color:0x101821,roughness:0.54,metalness:0.38});
+  const sm=mat({color:0x05080d,roughness:0.62,metalness:0.30});
+  const pm=mat({color:0x17202a,roughness:0.46,metalness:0.42});
+
+  const base=new THREE.Mesh(new THREE.BoxGeometry(5.65,2.20,0.32),bm);
+  base.position.set(0,-0.08,-0.10); drumGroup.add(base);
+  const fl=new THREE.Mesh(new THREE.BoxGeometry(5.70,0.18,0.28),sm);
+  fl.position.set(0,-1.10,0.04); drumGroup.add(fl);
+
+  const panel=new THREE.Group(); panel.name='drum_panel';
+  panel.position.set(0,0.08,0.14); panel.rotation.x=-0.15; drumGroup.add(panel);
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(5.34,1.78,0.18),pm);
+  plate.position.set(0,0,0); panel.add(plate);
+
   addLabel(panel,'QR DRUM MACHINE',-1.75,0.72,0.16,1.55,0.15,{fontSize:22,color:'#dbfff5'});
-  [['kick','Kick',-1.92,0.38,0xff6b3a],['snare','Snare',-1.20,0.38,0x3aa6ff],['clap','Clap',-0.48,0.38,0xffdf6e],['rim','Rim',0.24,0.38,0xb26bff],['hat','Hi-Hat',-1.92,-0.16,0x63e6be],['hatOpen','Open Hat',-1.20,-0.16,0x63e6be],['tom','Tom',-0.48,-0.16,0xffa23a],['crash','Crash',0.24,-0.16,0xf45cff]].forEach(([id,label,x,y,color])=>{
-    const pad=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.40,0.10),mat({color:0x202b36,roughness:0.40,metalness:0.18}));pad.position.set(x,y,0.16);pad.userData={baseColor:0x202b36,activeColor:color,baseZ:0.16};panel.add(pad);addInteractive(pad,{kind:'drumPad',id});addLabel(panel,label,x,y,0.23,0.52,0.12,{fontSize:22,color:'#f6fff8'});
+
+  const pads=[
+    ['kick','Kick',-1.92,0.38,0xff6b3a],['snare','Snare',-1.20,0.38,0x3aa6ff],
+    ['clap','Clap',-0.48,0.38,0xffdf6e],['rim','Rim',0.24,0.38,0xb26bff],
+    ['hat','Hi-Hat',-1.92,-0.16,0x63e6be],['hatOpen','Open Hat',-1.20,-0.16,0x63e6be],
+    ['tom','Tom',-0.48,-0.16,0xffa23a],['crash','Crash',0.24,-0.16,0xf45cff]
+  ];
+  pads.forEach(([id,label,x,y,color])=>createDrumPad(panel,id,label,x,y,color));
+
+  createDrumButton(panel,'PLAY',0.95,-0.62,0x32c7ff,()=>playDrumPattern());
+  createDrumButton(panel,'STOP',1.55,-0.62,0xffdf6e,()=>updateDrumDisplay('QR DRUM','STOP','READY'));
+  createDrumButton(panel,'REC',2.15,-0.62,0xff5a66,()=>updateDrumDisplay('QR DRUM','REC','READY'));
+
+  const scr=new THREE.Mesh(new THREE.BoxGeometry(1.18,0.44,0.08),mat({color:0x051311,emissive:0x0b4639,roughness:0.22}));
+  scr.position.set(2.05,0.48,0.17); panel.add(scr);
+  drumScreenMaterial=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false});
+  const disp=new THREE.Mesh(new THREE.PlaneGeometry(1.02,0.32),drumScreenMaterial);
+  disp.position.set(2.05,0.48,0.23); panel.add(disp);
+
+  [['tone','TONE',1.28,0.06,0x3aa6ff],['decay','DECAY',1.78,0.06,0xffdf6e],
+   ['drive','DRIVE',2.28,0.06,0xffa23a],['space','SPACE',1.54,-0.32,0xb26bff],
+   ['level','LEVEL',2.06,-0.32,0x63e6be]].forEach(([id,label,x,y,color])=>{
+    createDrumKnob(panel,id,label,x,y,color);
   });
-  createDrumBtn(panel,'PLAY',0.95,-0.62,0x32c7ff,()=>playDrumPattern());createDrumBtn(panel,'STOP',1.55,-0.62,0xffdf6e,()=>updateDrumDisplay('QR DRUM','STOP','READY'));createDrumBtn(panel,'REC',2.15,-0.62,0xff5a66,()=>updateDrumDisplay('QR DRUM','REC','READY'));
-  const scr=new THREE.Mesh(new THREE.BoxGeometry(1.18,0.44,0.08),mat({color:0x051311,emissive:0x0b4639,roughness:0.22}));scr.position.set(2.05,0.48,0.17);panel.add(scr);
-  drumScreenMaterial=new THREE.MeshBasicMaterial({transparent:true,depthWrite:false});panel.add(new THREE.Mesh(new THREE.PlaneGeometry(1.02,0.32),drumScreenMaterial)).position.set(2.05,0.48,0.23);
-  [['tone','TONE',1.28,0.06,0x3aa6ff],['decay','DECAY',1.78,0.06,0xffdf6e],['drive','DRIVE',2.28,0.06,0xffa23a],['space','SPACE',1.54,-0.32,0xb26bff],['level','LEVEL',2.06,-0.32,0x63e6be]].forEach(([id,label,x,y,color])=>createDrumKnob(panel,id,label,x,y,color));
   updateDrumDisplay('QR DRUM','128 BPM','READY');
 }
-function createDrumBtn(parent,label,x,y,color,action){const m=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.24,0.09),mat({color:0x273241,emissive:color,roughness:0.36,metalness:0.25}));m.position.set(x,y,0.18);m.userData={baseColor:0x273241,activeColor:color};parent.add(m);addInteractive(m,{kind:'drumButton',label,action});addLabel(parent,label,x,y,0.25,0.38,0.11,{fontSize:22,color:'#fff'});}
-function createDrumKnob(parent,id,label,x,y,color){const v=drumControls[id]??0.5;const g=new THREE.Group();g.position.set(x,y,0.18);parent.add(g);g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.08,32),mat({color:0x0a0d12,emissive:color,roughness:0.34,metalness:0.45}))).rotation.x=Math.PI/2;const ind=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.13,0.024),mat({color,emissive:color}));ind.position.set(0,0.05,0.06);g.add(ind);const hit=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.36,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));hit.position.set(x,y,0.26);parent.add(hit);addInteractive(hit,{kind:'drumKnob',id});addLabel(parent,label,x,y-0.26,0.22,0.36,0.10,{fontSize:16,color:'#f6fff8'});const knob={group:g,indicator:ind,value:v,color};drumControlMeshes.set(id,knob);updateDrumKnobVisual(knob);}
-function updateDrumKnobVisual(k){const a=lerp(-2.10,2.10,k.value);k.indicator.rotation.z=-a;k.group.children[0].material.emissiveIntensity=0.16+k.value*0.72;}
+
+function createDrumPad(parent,id,label,x,y,color) {
+  const pad=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.40,0.10),mat({color:0x202b36,roughness:0.40,metalness:0.18}));
+  pad.position.set(x,y,0.16); pad.userData={baseColor:0x202b36,activeColor:color,baseZ:0.16};
+  parent.add(pad); addInteractive(pad,{kind:'drumPad',id});
+  addLabel(parent,label,x,y,0.23,0.52,0.12,{fontSize:22,color:'#f6fff8'}); return pad;
+}
+function createDrumButton(parent,label,x,y,color,action) {
+  const m=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.24,0.09),mat({color:0x273241,emissive:color,roughness:0.36,metalness:0.25}));
+  m.position.set(x,y,0.18); m.userData={baseColor:0x273241,activeColor:color};
+  parent.add(m); addInteractive(m,{kind:'drumButton',label,action});
+  addLabel(parent,label,x,y,0.25,0.38,0.11,{fontSize:22,color:'#fff'}); return m;
+}
+function createDrumKnob(parent,id,label,x,y,color) {
+  const value=drumControls[id]??0.5;
+  const g=new THREE.Group(); g.position.set(x,y,0.18); parent.add(g);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.08,32),mat({color:0x0a0d12,emissive:color,roughness:0.34,metalness:0.45}));
+  base.rotation.x=Math.PI/2; g.add(base);
+  const ind=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.13,0.024),mat({color,emissive:color}));
+  ind.position.set(0,0.05,0.06); g.add(ind);
+  const hit=new THREE.Mesh(new THREE.BoxGeometry(0.36,0.36,0.04),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
+  hit.position.set(x,y,0.26); parent.add(hit);
+  addInteractive(hit,{kind:'drumKnob',id});
+  addLabel(parent,label,x,y-0.26,0.22,0.36,0.10,{fontSize:16,color:'#f6fff8'});
+  const knob={group:g,indicator:ind,value,color}; drumControlMeshes.set(id,knob);
+  updateDrumKnobVisual(knob); return knob;
+}
+function updateDrumKnobVisual(knob) {
+  const a=lerp(-2.10,2.10,knob.value); knob.indicator.rotation.z=-a;
+  knob.group.children[0].material.emissiveIntensity=0.16+knob.value*0.72;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // AUDIO ENGINE
 // ═══════════════════════════════════════════════════════════════════
-function ensureAudio(){if(audioCtx)return audioCtx;const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return null;audioCtx=new Ctx({latencyHint:'interactive'});masterGain=audioCtx.createGain();masterGain.gain.value=state.faders.VOL;const comp=audioCtx.createDynamicsCompressor();comp.threshold.value=-18;comp.knee.value=22;comp.ratio.value=5;comp.attack.value=0.006;comp.release.value=0.18;masterGain.connect(comp);comp.connect(audioCtx.destination);fxSend=audioCtx.createGain();fxSend.gain.value=state.faders.FX*0.34;delayNode=audioCtx.createDelay(0.9);delayNode.delayTime.value=0.22;delayFeedback=audioCtx.createGain();delayFeedback.gain.value=0.18;fxSend.connect(delayNode);delayNode.connect(delayFeedback);delayFeedback.connect(delayNode);delayNode.connect(comp);return audioCtx;}
-function unlockAudio(){const ctx=ensureAudio();if(!ctx)return;try{if(ctx.state==='suspended')ctx.resume().catch(()=>{});}catch(e){}if(audioUnlocked)return;const buf=ctx.createBuffer(1,1,ctx.sampleRate);const src=ctx.createBufferSource();src.buffer=buf;src.connect(ctx.destination);src.start(0);audioUnlocked=true;}
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
+  const Ctx=window.AudioContext||window.webkitAudioContext;
+  if (!Ctx) return null;
+  audioCtx=new Ctx({latencyHint:'interactive'});
+  masterGain=audioCtx.createGain(); masterGain.gain.value=state.faders.VOL;
+  const comp=audioCtx.createDynamicsCompressor();
+  comp.threshold.value=-18;comp.knee.value=22;comp.ratio.value=5;
+  comp.attack.value=0.006;comp.release.value=0.18;
+  masterGain.connect(comp);comp.connect(audioCtx.destination);
+  fxSend=audioCtx.createGain();fxSend.gain.value=state.faders.FX*0.34;
+  delayNode=audioCtx.createDelay(0.9);delayNode.delayTime.value=0.22;
+  delayFeedback=audioCtx.createGain();delayFeedback.gain.value=0.18;
+  fxSend.connect(delayNode);delayNode.connect(delayFeedback);
+  delayFeedback.connect(delayNode);delayNode.connect(comp);
+  return audioCtx;
+}
+function unlockAudio() {
+  const ctx=ensureAudio();if(!ctx)return;
+  try{if(ctx.state==='suspended')ctx.resume().catch(()=>{});}catch(e){}
+  if(audioUnlocked)return;
+  const buf=ctx.createBuffer(1,1,ctx.sampleRate);
+  const src=ctx.createBufferSource();src.buffer=buf;
+  src.connect(ctx.destination);src.start(0);audioUnlocked=true;
+}
 function midiToFreq(midi){return 440*Math.pow(2,(midi-69+state.pitchBend*2)/12);}
 function getAdsr(){return{attack:0.004+state.faders.A*0.72,decay:0.035+state.faders.D*0.9,sustain:clamp(state.faders.S,0.08,0.92),release:0.04+state.faders.R*1.8};}
 function makeNoiseBuffer(ctx,dur=0.7){const len=Math.max(1,Math.floor(ctx.sampleRate*dur));const buf=ctx.createBuffer(1,len,ctx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;return buf;}
-function createSynthVoice(midi,vel=0.78,opts={}){const ctx=ensureAudio();if(!ctx)return null;if(ctx.state==='suspended')ctx.resume().catch(()=>{});const now=ctx.currentTime;const freq=midiToFreq(midi+(opts.bass?-12:0));const wave=opts.wave||WAVES[state.currentWave].osc;const filter=ctx.createBiquadFilter();filter.type='lowpass';filter.frequency.value=180+Math.pow(state.cutoff,1.4)*(opts.bass?3600:11800);filter.Q.value=0.7+state.reso*12;const gain=ctx.createGain();gain.gain.value=0.0001;let src,osc=null;if(wave==='noise'){src=ctx.createBufferSource();src.buffer=makeNoiseBuffer(ctx,1.4);}else{src=ctx.createOscillator();osc=src;src.type=wave;if(state.glide&&state.lastFreq){src.frequency.setValueAtTime(state.lastFreq,now);src.frequency.exponentialRampToValueAtTime(Math.max(20,freq),now+0.11);}else{src.frequency.value=freq;}src.detune.value=state.pitchBend*200;if(state.mod>0.02){const lfo=ctx.createOscillator(),lfoG=ctx.createGain();lfo.frequency.value=4.5+state.mod*5;lfoG.gain.value=state.mod*(opts.bass?10:24);lfo.connect(lfoG);lfoG.connect(src.detune);lfo.start(now);setTimeout(()=>{try{lfo.stop();lfo.disconnect();lfoG.disconnect();}catch(e){}},2600);}}const adsr=getAdsr();const peak=clamp(vel*state.faders.VOL,0.001,0.95);gain.gain.setValueAtTime(0.0001,now);gain.gain.linearRampToValueAtTime(peak,now+adsr.attack);gain.gain.setTargetAtTime(peak*adsr.sustain*(opts.bass?0.8:1),now+adsr.attack,adsr.decay/3);src.connect(filter);filter.connect(gain);gain.connect(masterGain);gain.connect(fxSend);src.start(now);const voice={source:src,oscillator:osc,gain,filter,startedAt:now,minHoldUntil:now+0.23,released:false,releaseTimer:0};state.lastFreq=freq;return voice;}
-function releaseVoice(voice,opts={}){if(!voice||!audioCtx||voice.released)return;const now=audioCtx.currentTime;const wait=opts.force?0:Math.max(0,(voice.minHoldUntil||now)-now);if(wait<=0.005){noteOff(voice,opts);return;}if(voice.releaseTimer)return;voice.releaseTimer=setTimeout(()=>{voice.releaseTimer=0;noteOff(voice,opts);},wait*1000);}
-function noteOff(voice,opts={}){if(!voice||!audioCtx)return;if(voice.released)return;voice.released=true;if(voice.releaseTimer){clearTimeout(voice.releaseTimer);voice.releaseTimer=0;}const adsr=getAdsr();const now=audioCtx.currentTime;const rel=opts.force?0.035:(state.hold?Math.max(adsr.release,1.0):adsr.release);try{voice.gain.gain.cancelScheduledValues(now);voice.gain.gain.setTargetAtTime(0.0001,now,rel/4);voice.source.stop(now+rel+0.08);}catch(e){}setTimeout(()=>{try{voice.source.disconnect();voice.filter.disconnect();voice.gain.disconnect();}catch(e){}},(rel+0.2)*1000);}
-function playDrum(id,vel=0.85){const ctx=ensureAudio();if(!ctx)return;if(ctx.state==='suspended')ctx.resume().catch(()=>{});const now=ctx.currentTime;const out=ctx.createGain();const tf=lerp(0.62,1.38,drumControls.tone),df=lerp(0.62,1.85,drumControls.decay),drf=lerp(0.9,1.38,drumControls.drive);out.gain.value=state.faders.VOL*drumControls.level*vel*drf;out.connect(masterGain);out.connect(fxSend);if(fxSend)fxSend.gain.setTargetAtTime((state.faders.FX*0.22)+(drumControls.space*0.24),now,0.015);if(id==='kick'){const osc=ctx.createOscillator();osc.type='sine';osc.frequency.setValueAtTime(135*tf,now);osc.frequency.exponentialRampToValueAtTime(42*tf,now+0.18*df);out.gain.setValueAtTime(vel,now);out.gain.exponentialRampToValueAtTime(0.0001,now+0.28*df);osc.connect(out);osc.start(now);osc.stop(now+0.3*df);return;}if(id==='tom'){const body=ctx.createOscillator();body.type='sine';body.frequency.setValueAtTime(210*tf,now);body.frequency.exponentialRampToValueAtTime(86*tf,now+0.26*df);out.gain.setValueAtTime(vel*0.72,now);out.gain.exponentialRampToValueAtTime(0.0001,now+0.38*df);body.connect(out);body.start(now);body.stop(now+0.4*df);return;}if(id==='snare'){const body=ctx.createOscillator(),bg=ctx.createGain();body.type='triangle';body.frequency.setValueAtTime(190*tf,now);body.frequency.exponentialRampToValueAtTime(118*tf,now+0.12*df);bg.gain.setValueAtTime(vel*0.34,now);bg.gain.exponentialRampToValueAtTime(0.0001,now+0.16*df);body.connect(bg);bg.connect(out);body.start(now);body.stop(now+0.18);}const noise=ctx.createBufferSource();noise.buffer=makeNoiseBuffer(ctx,(id==='crash'||id==='ride'?1.1:0.32)*df);const filt=ctx.createBiquadFilter();filt.type=id==='tom'?'bandpass':'highpass';filt.frequency.value=({snare:1200,clap:900,tom:220,hat:5200,hatOpen:4300,crash:3100,ride:3800}[id]*tf)||1600*tf;filt.Q.value=id==='tom'?5:0.8+state.reso*4;out.gain.setValueAtTime(vel*(id==='hat'?0.34:0.62),now);out.gain.exponentialRampToValueAtTime(0.0001,now+(id==='crash'||id==='ride'?0.9:0.2)*df);noise.connect(filt);filt.connect(out);noise.start(now);noise.stop(now+1.0*df);}
-function drumForMidi(midi){const pc=((midi%12)+12)%12;if(!WHITE_PCS.has(pc)){if(midi<55)return pc===1?'kick':'snare';if(midi<64)return pc===6?'tom':'clap';return pc===10?'crash':'hatOpen';}const ws=[0,2,4,5,7,9,11];const oct=Math.floor((midi-48)/12),step=ws.indexOf(pc),wi2=oct*7+step;if(wi2<=2)return'kick';if(wi2<=5)return'snare';if(wi2<=8)return wi2===8?'clap':'tom';if(wi2<=11)return wi2===11?'hatOpen':'hat';return wi2>=14?'ride':'crash';}
+
+function createSynthVoice(midi,vel=0.78,opts={}) {
+  const ctx=ensureAudio();if(!ctx)return null;
+  if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+  const now=ctx.currentTime;
+  const freq=midiToFreq(midi+(opts.bass?-12:0));
+  const wave=opts.wave||WAVES[state.currentWave].osc;
+  const filter=ctx.createBiquadFilter();filter.type='lowpass';
+  filter.frequency.value=180+Math.pow(state.cutoff,1.4)*(opts.bass?3600:11800);
+  filter.Q.value=0.7+state.reso*12;
+  const gain=ctx.createGain();gain.gain.value=0.0001;
+  let src,osc=null;
+  if(wave==='noise'){src=ctx.createBufferSource();src.buffer=makeNoiseBuffer(ctx,1.4);}
+  else{src=ctx.createOscillator();osc=src;src.type=wave;
+    if(state.glide&&state.lastFreq){src.frequency.setValueAtTime(state.lastFreq,now);src.frequency.exponentialRampToValueAtTime(Math.max(20,freq),now+0.11);}
+    else{src.frequency.value=freq;}
+    src.detune.value=state.pitchBend*200;
+    if(state.mod>0.02){const lfo=ctx.createOscillator(),lfoG=ctx.createGain();lfo.frequency.value=4.5+state.mod*5;lfoG.gain.value=state.mod*(opts.bass?10:24);lfo.connect(lfoG);lfoG.connect(src.detune);lfo.start(now);setTimeout(()=>{try{lfo.stop();lfo.disconnect();lfoG.disconnect();}catch(e){}},2600);}
+  }
+  const adsr=getAdsr();const peak=clamp(vel*state.faders.VOL,0.001,0.95);
+  gain.gain.setValueAtTime(0.0001,now);gain.gain.linearRampToValueAtTime(peak,now+adsr.attack);gain.gain.setTargetAtTime(peak*adsr.sustain*(opts.bass?0.8:1),now+adsr.attack,adsr.decay/3);
+  src.connect(filter);filter.connect(gain);gain.connect(masterGain);gain.connect(fxSend);src.start(now);
+  const voice={source:src,oscillator:osc,gain,filter,startedAt:now,minHoldUntil:now+0.23,released:false,releaseTimer:0};
+  state.lastFreq=freq;return voice;
+}
+function releaseVoice(voice,opts={}){
+  if(!voice||!audioCtx||voice.released)return;
+  const now=audioCtx.currentTime;const wait=opts.force?0:Math.max(0,(voice.minHoldUntil||now)-now);
+  if(wait<=0.005){noteOff(voice,opts);return;}if(voice.releaseTimer)return;
+  voice.releaseTimer=setTimeout(()=>{voice.releaseTimer=0;noteOff(voice,opts);},wait*1000);
+}
+function noteOff(voice,opts={}){
+  if(!voice||!audioCtx)return;if(voice.released)return;voice.released=true;
+  if(voice.releaseTimer){clearTimeout(voice.releaseTimer);voice.releaseTimer=0;}
+  const adsr=getAdsr();const now=audioCtx.currentTime;
+  const rel=opts.force?0.035:(state.hold?Math.max(adsr.release,1.0):adsr.release);
+  try{voice.gain.gain.cancelScheduledValues(now);voice.gain.gain.setTargetAtTime(0.0001,now,rel/4);voice.source.stop(now+rel+0.08);}catch(e){}
+  setTimeout(()=>{try{voice.source.disconnect();voice.filter.disconnect();voice.gain.disconnect();}catch(e){}},(rel+0.2)*1000);
+}
+
+function playDrum(id,vel=0.85) {
+  const ctx=ensureAudio();if(!ctx)return;
+  if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+  const now=ctx.currentTime;const out=ctx.createGain();
+  const tf=lerp(0.62,1.38,drumControls.tone),df=lerp(0.62,1.85,drumControls.decay),drf=lerp(0.9,1.38,drumControls.drive);
+  out.gain.value=state.faders.VOL*drumControls.level*vel*drf;out.connect(masterGain);out.connect(fxSend);
+  if(fxSend)fxSend.gain.setTargetAtTime((state.faders.FX*0.22)+(drumControls.space*0.24),now,0.015);
+  if(id==='kick'){
+    const osc=ctx.createOscillator();osc.type='sine';osc.frequency.setValueAtTime(135*tf,now);osc.frequency.exponentialRampToValueAtTime(42*tf,now+0.18*df);
+    out.gain.setValueAtTime(vel,now);out.gain.exponentialRampToValueAtTime(0.0001,now+0.28*df);osc.connect(out);osc.start(now);osc.stop(now+0.3*df);return;
+  }
+  if(id==='tom'){const body=ctx.createOscillator();body.type='sine';body.frequency.setValueAtTime(210*tf,now);body.frequency.exponentialRampToValueAtTime(86*tf,now+0.26*df);out.gain.setValueAtTime(vel*0.72,now);out.gain.exponentialRampToValueAtTime(0.0001,now+0.38*df);body.connect(out);body.start(now);body.stop(now+0.4*df);return;}
+  if(id==='snare'){const body=ctx.createOscillator(),bg=ctx.createGain();body.type='triangle';body.frequency.setValueAtTime(190*tf,now);body.frequency.exponentialRampToValueAtTime(118*tf,now+0.12*df);bg.gain.setValueAtTime(vel*0.34,now);bg.gain.exponentialRampToValueAtTime(0.0001,now+0.16*df);body.connect(bg);bg.connect(out);body.start(now);body.stop(now+0.18);}
+  const noise=ctx.createBufferSource();noise.buffer=makeNoiseBuffer(ctx,(id==='crash'||id==='ride'?1.1:0.32)*df);
+  const filt=ctx.createBiquadFilter();filt.type=id==='tom'?'bandpass':'highpass';
+  filt.frequency.value=({snare:1200,clap:900,tom:220,hat:5200,hatOpen:4300,crash:3100,ride:3800}[id]*tf)||1600*tf;
+  filt.Q.value=id==='tom'?5:0.8+state.reso*4;
+  out.gain.setValueAtTime(vel*(id==='hat'?0.34:0.62),now);out.gain.exponentialRampToValueAtTime(0.0001,now+(id==='crash'||id==='ride'?0.9:0.2)*df);
+  noise.connect(filt);filt.connect(out);noise.start(now);noise.stop(now+1.0*df);
+}
+function drumForMidi(midi){
+  const pc=((midi%12)+12)%12;if(!WHITE_PCS.has(pc)){if(midi<55)return pc===1?'kick':'snare';if(midi<64)return pc===6?'tom':'clap';return pc===10?'crash':'hatOpen';}
+  const ws=[0,2,4,5,7,9,11];const oct=Math.floor((midi-48)/12),step=ws.indexOf(pc),wi2=oct*7+step;
+  if(wi2<=2)return'kick';if(wi2<=5)return'snare';if(wi2<=8)return wi2===8?'clap':'tom';if(wi2<=11)return wi2===11?'hatOpen':'hat';return wi2>=14?'ride':'crash';
+}
 function triggerByMode(midi,vel){if(state.currentMode==='drum'){playDrum(drumForMidi(midi),vel);return null;}if(state.currentMode==='bass')return createSynthVoice(midi,vel,{bass:true});return createSynthVoice(midi,vel);}
 function playDrumPattern(){const pat=[['kick',0],['hat',120],['snare',240],['hat',360],['kick',480],['hatOpen',600],['snare',720],['crash',840]];pat.forEach(([id,delay])=>setTimeout(()=>{if(state.activeMarker==='drum'){playDrum(id,0.76);updateDrumDisplay('QR DRUM',id.toUpperCase(),'PLAY');}},delay));}
 
 // ═══════════════════════════════════════════════════════════════════
 // INTERACTION
 // ═══════════════════════════════════════════════════════════════════
-function flashKey(k,a){if(!k?.userData?.baseColor)return;const d=k.userData;k.position.z=a?d.baseZ-0.025:d.baseZ;k.material.color.setHex(a?d.activeColor:d.baseColor);k.material.emissive.setHex(a?d.activeColor:0);k.material.emissiveIntensity=a?0.45:0.05;}
-function flashDrumPad(p,a){if(!p?.userData?.baseColor)return;const d=p.userData;p.position.z=a?d.baseZ-0.018:d.baseZ;p.material.color.setHex(a?d.activeColor:d.baseColor);p.material.emissive.setHex(a?d.activeColor:0);p.material.emissiveIntensity=a?0.62:0.05;}
+function flashKey(key,active){if(!key?.userData?.baseColor)return;const d=key.userData;key.position.z=active?d.baseZ-0.025:d.baseZ;key.material.color.setHex(active?d.activeColor:d.baseColor);key.material.emissive.setHex(active?d.activeColor:0);key.material.emissiveIntensity=active?0.45:0.05;}
+function flashDrumPad(pad,active){if(!pad?.userData?.baseColor)return;const d=pad.userData;pad.position.z=active?d.baseZ-0.018:d.baseZ;pad.material.color.setHex(active?d.activeColor:d.baseColor);pad.material.emissive.setHex(active?d.activeColor:0);pad.material.emissiveIntensity=active?0.62:0.05;}
+
 function setButtonActive(mesh,active,color){if(!mesh)return;mesh.userData.isActive=active;mesh.material.color.setHex(active?color:mesh.userData.baseColor);mesh.material.emissive.setHex(active?color:0);mesh.material.emissiveIntensity=active?0.8:0.04;}
+
 function selectPreset(id){if(!PRESETS[id])return;unlockAudio();state.currentPreset=id;state.currentMode=PRESETS[id].mode;state.lastFreq=null;ui.presetButtons.forEach((m,k)=>setButtonActive(m,k===id,PRESETS[k].color));updateDisplay(id==='DRUM'?'DRUM KIT':id,id==='SYNTH'||id==='BASS'?state.currentWave:'PRESET','READY');}
 function selectWave(id){if(!WAVES[id])return;state.currentWave=id;ui.waveButtons.forEach((m,k)=>setButtonActive(m,k===id,WAVES[k].color));updateDisplay(state.currentPreset,id,'READY');}
 function togglePerformance(id){if(id==='GLIDE')state.glide=!state.glide;if(id==='ARP')state.arp=!state.arp;if(id==='HOLD')state.hold=!state.hold;ui.perfButtons.forEach((m,k)=>{const act=(k==='GLIDE'&&state.glide)||(k==='ARP'&&state.arp)||(k==='HOLD'&&state.hold);setButtonActive(m,act,0x63e6be);});}
+
 function updateDisplay(l1,l2,l3){if(!screenMaterial)return;const tex=labelTexture([l1,l2,l3].filter(Boolean),{width:512,height:192,background:'#04110f',color:'#63e6be',fontSize:34});if(screenMaterial.map)screenMaterial.map.dispose();screenMaterial.map=tex;screenMaterial.needsUpdate=true;}
 function updateDrumDisplay(l1,l2,l3){if(!drumScreenMaterial)return;const tex=labelTexture([l1,l2,l3].filter(Boolean),{width:512,height:192,background:'#04110f',color:'#63e6be',fontSize:34});if(drumScreenMaterial.map)drumScreenMaterial.map.dispose();drumScreenMaterial.map=tex;drumScreenMaterial.needsUpdate=true;}
 function updateStripVisual(id){const s=ui.strips.get(id);if(!s)return;s.fill.position.y=s.centerY-0.12+s.value*0.24;s.fill.material.emissiveIntensity=0.18+s.value*0.9;}
-function handleControl(interaction,hit,event){if(!interaction)return;unlockAudio();if(interaction.kind==='drumPad'){flashDrumPad(hit.object,true);playDrum(interaction.id,0.88);updateDrumDisplay('QR DRUM',interaction.id.toUpperCase(),'HIT');setTimeout(()=>flashDrumPad(hit.object,false),150);return;}if(interaction.kind==='drumButton'){flashDrumPad(hit.object,true);interaction.action?.();setTimeout(()=>flashDrumPad(hit.object,false),150);return;}if(interaction.kind==='preset')selectPreset(interaction.id);if(interaction.kind==='wave')selectWave(interaction.id);if(interaction.kind==='performance')togglePerformance(interaction.id);if(interaction.kind==='octave'){state.octaveShift=clamp(state.octaveShift+interaction.semitoneDelta,-24,24);updateDisplay(state.currentPreset,state.currentWave,`OCT ${state.octaveShift/12}`);}if(interaction.kind==='key')playKey(interaction.midi,hit.object,event.pointerId);if(interaction.kind==='fader'||interaction.kind==='knob'||interaction.kind==='strip'){dragState={kind:interaction.kind,id:interaction.id,lastX:event.clientX,lastY:event.clientY};updateDragControl(event);}if(interaction.kind==='drumKnob'){dragState={kind:interaction.kind,id:interaction.id,lastX:event.clientX,lastY:event.clientY};updateDragControl(event);}}
-function playKey(midi,obj,pointerId=0){unlockAudio();const adj=midi+state.octaveShift;flashKey(obj,true);if(state.arp&&state.currentMode==='drum'){['kick','hat','snare','hatOpen','tom','crash'].forEach((id,i)=>{setTimeout(()=>{playDrum(id,0.68);updateDisplay('DRUM KIT',id.toUpperCase(),'ARP');},i*105);});setTimeout(()=>flashKey(obj,false),180);return;}if(state.arp&&state.currentMode!=='guitar'){[0,4,7,12].forEach((off,i)=>{setTimeout(()=>{const v=triggerByMode(adj+off,0.68);if(v)setTimeout(()=>releaseVoice(v),state.currentMode==='bass'?260:210);},i*105);});setTimeout(()=>flashKey(obj,false),180);return;}const voice=triggerByMode(adj,0.82);if(voice&&!state.hold){activePointers.set(pointerId,{voice,key:obj});}else if(voice){setTimeout(()=>releaseVoice(voice),1700);setTimeout(()=>flashKey(obj,false),180);}else{setTimeout(()=>flashKey(obj,false),160);}}
-function updateDragControl(event){if(!dragState)return;const dx=event.clientX-dragState.lastX,dy=event.clientY-dragState.lastY;dragState.lastX=event.clientX;dragState.lastY=event.clientY;const delta=(-dy+dx*0.45)/180;if(dragState.kind==='fader'){const f=ui.faders.get(dragState.id);if(!f)return;f.value=clamp(f.value+delta,0,1);state.faders[dragState.id]=f.value;updateFaderVisual(f);if(dragState.id==='VOL'&&masterGain)masterGain.gain.setTargetAtTime(f.value,audioCtx.currentTime,0.02);if(dragState.id==='FX'&&fxSend)fxSend.gain.setTargetAtTime(f.value*0.34,audioCtx.currentTime,0.02);updateDisplay(state.currentPreset,state.currentWave,`${dragState.id} ${Math.round(f.value*100)}`);}if(dragState.kind==='knob'){const k=ui.knobs.get(dragState.id);if(!k)return;k.value=clamp(k.value+delta,0,1);if(dragState.id==='cutoff')state.cutoff=k.value;if(dragState.id==='reso')state.reso=k.value;updateKnobVisual(k);updateDisplay(state.currentPreset,state.currentWave,`${dragState.id.toUpperCase()} ${Math.round(k.value*100)}`);}if(dragState.kind==='strip'){const s=ui.strips.get(dragState.id);if(!s)return;s.value=clamp(s.value+(-dy/160),0,1);if(dragState.id==='PITCH')state.pitchBend=(s.value-0.5)*2;if(dragState.id==='MOD')state.mod=s.value;updateStripVisual(dragState.id);updateDisplay(state.currentPreset,state.currentWave,`${dragState.id} ${Math.round(s.value*100)}`);}if(dragState.kind==='drumKnob'){const k=drumControlMeshes.get(dragState.id);if(!k)return;k.value=clamp(k.value+delta,0,1);drumControls[dragState.id]=k.value;updateDrumKnobVisual(k);updateDrumDisplay('QR DRUM',dragState.id.toUpperCase(),`${Math.round(k.value*100)}`);}}
-function bindCanvasEvents(canvas){if(!canvas||canvas._bound)return;canvas._bound=true;const getHit=(event)=>{const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects(interactives,false);return hits.find(h=>h.object.visible!==false&&isDescendantOf(h.object,activeGroup));};canvas.addEventListener('pointerdown',(event)=>{event.preventDefault();try{canvas.setPointerCapture(event.pointerId);}catch(e){}activeTouchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});if(activeTouchPoints.size>=2){beginTransformGesture();return;}if(!state.activeMarker){unlockAudio();return;}const hit=getHit(event);if(hit)handleControl(hit.object.userData.interaction,hit,event);},{passive:false});canvas.addEventListener('pointermove',(event)=>{if(activeTouchPoints.has(event.pointerId))activeTouchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});if(activeTouchPoints.size>=2){event.preventDefault();updateTransformGesture();return;}if(!dragState)return;event.preventDefault();updateDragControl(event);},{passive:false});const finish=(event)=>{const wt=Boolean(transformGesture);activeTouchPoints.delete(event.pointerId);if(activeTouchPoints.size<2)transformGesture=null;if(!wt)pointerUp(event.pointerId);};canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);canvas.addEventListener('touchstart',()=>unlockAudio(),{passive:true});}
+
+function handleControl(interaction,hit,event){
+  if(!interaction)return;unlockAudio();
+  if(interaction.kind==='drumPad'){flashDrumPad(hit.object,true);playDrum(interaction.id,0.88);updateDrumDisplay('QR DRUM',interaction.id.toUpperCase(),'HIT');setTimeout(()=>flashDrumPad(hit.object,false),150);return;}
+  if(interaction.kind==='drumButton'){flashDrumPad(hit.object,true);interaction.action?.();setTimeout(()=>flashDrumPad(hit.object,false),150);return;}
+  if(interaction.kind==='preset')selectPreset(interaction.id);
+  if(interaction.kind==='wave')selectWave(interaction.id);
+  if(interaction.kind==='performance')togglePerformance(interaction.id);
+  if(interaction.kind==='octave'){state.octaveShift=clamp(state.octaveShift+interaction.semitoneDelta,-24,24);updateDisplay(state.currentPreset,state.currentWave,`OCT ${state.octaveShift/12}`);}
+  if(interaction.kind==='key')playKey(interaction.midi,hit.object,event.pointerId);
+  if(interaction.kind==='fader'||interaction.kind==='knob'||interaction.kind==='strip'){dragState={kind:interaction.kind,id:interaction.id,lastX:event.clientX,lastY:event.clientY};updateDragControl(event);}
+  if(interaction.kind==='drumKnob'){dragState={kind:interaction.kind,id:interaction.id,lastX:event.clientX,lastY:event.clientY};updateDragControl(event);}
+}
+
+function playKey(midi,obj,pointerId=0){
+  unlockAudio();const adj=midi+state.octaveShift;flashKey(obj,true);
+  if(state.arp&&state.currentMode==='drum'){['kick','hat','snare','hatOpen','tom','crash'].forEach((id,i)=>{setTimeout(()=>{playDrum(id,0.68);updateDisplay('DRUM KIT',id.toUpperCase(),'ARP');},i*105);});setTimeout(()=>flashKey(obj,false),180);return;}
+  if(state.arp&&state.currentMode!=='guitar'){[0,4,7,12].forEach((off,i)=>{setTimeout(()=>{const v=triggerByMode(adj+off,0.68);if(v)setTimeout(()=>releaseVoice(v),state.currentMode==='bass'?260:210);},i*105);});setTimeout(()=>flashKey(obj,false),180);return;}
+  const voice=triggerByMode(adj,0.82);
+  if(voice&&!state.hold){activePointers.set(pointerId,{voice,key:obj});}else if(voice){setTimeout(()=>releaseVoice(voice),1700);setTimeout(()=>flashKey(obj,false),180);}else{setTimeout(()=>flashKey(obj,false),160);}
+}
+
+function updateDragControl(event){
+  if(!dragState)return;const dx=event.clientX-dragState.lastX,dy=event.clientY-dragState.lastY;dragState.lastX=event.clientX;dragState.lastY=event.clientY;const delta=(-dy+dx*0.45)/180;
+  if(dragState.kind==='fader'){const f=ui.faders.get(dragState.id);if(!f)return;f.value=clamp(f.value+delta,0,1);state.faders[dragState.id]=f.value;updateFaderVisual(f);if(dragState.id==='VOL'&&masterGain)masterGain.gain.setTargetAtTime(f.value,audioCtx.currentTime,0.02);if(dragState.id==='FX'&&fxSend)fxSend.gain.setTargetAtTime(f.value*0.34,audioCtx.currentTime,0.02);updateDisplay(state.currentPreset,state.currentWave,`${dragState.id} ${Math.round(f.value*100)}`);}
+  if(dragState.kind==='knob'){const k=ui.knobs.get(dragState.id);if(!k)return;k.value=clamp(k.value+delta,0,1);if(dragState.id==='cutoff')state.cutoff=k.value;if(dragState.id==='reso')state.reso=k.value;updateKnobVisual(k);updateDisplay(state.currentPreset,state.currentWave,`${dragState.id.toUpperCase()} ${Math.round(k.value*100)}`);}
+  if(dragState.kind==='strip'){const s=ui.strips.get(dragState.id);if(!s)return;s.value=clamp(s.value+(-dy/160),0,1);if(dragState.id==='PITCH')state.pitchBend=(s.value-0.5)*2;if(dragState.id==='MOD')state.mod=s.value;updateStripVisual(dragState.id);updateDisplay(state.currentPreset,state.currentWave,`${dragState.id} ${Math.round(s.value*100)}`);}
+  if(dragState.kind==='drumKnob'){const k=drumControlMeshes.get(dragState.id);if(!k)return;k.value=clamp(k.value+delta,0,1);drumControls[dragState.id]=k.value;updateDrumKnobVisual(k);updateDrumDisplay('QR DRUM',dragState.id.toUpperCase(),`${Math.round(k.value*100)}`);}
+}
+
+function bindCanvasEvents(canvas){
+  if(!canvas||canvas._synthBound)return;canvas._synthBound=true;
+  const getHit=(event)=>{const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;const afCam=$('#ar-scene').camera;if(afCam)raycaster.setFromCamera(pointer,afCam);const hits=raycaster.intersectObjects(interactives,false);return hits.find(h=>h.object.visible!==false&&isDescendantOf(h.object,activeGroup));};
+  canvas.addEventListener('pointerdown',(event)=>{event.preventDefault();try{canvas.setPointerCapture(event.pointerId);}catch(e){}activeTouchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});if(activeTouchPoints.size>=2){beginTransformGesture();return;}if(!state.activeMarker){unlockAudio();return;}const hit=getHit(event);if(hit)handleControl(hit.object.userData.interaction,hit,event);},{passive:false});
+  canvas.addEventListener('pointermove',(event)=>{if(activeTouchPoints.has(event.pointerId))activeTouchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});if(activeTouchPoints.size>=2){event.preventDefault();updateTransformGesture();return;}if(!dragState)return;event.preventDefault();updateDragControl(event);},{passive:false});
+  const finish=(event)=>{const wt=Boolean(transformGesture);activeTouchPoints.delete(event.pointerId);if(activeTouchPoints.size<2)transformGesture=null;if(!wt)pointerUp(event.pointerId);};
+  canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);canvas.addEventListener('touchstart',()=>unlockAudio(),{passive:true});
+}
 function beginTransformGesture(){const[a,b]=Array.from(activeTouchPoints.values()).slice(0,2);if(!a||!b)return;transformGesture={startDistance:Math.max(1,dist(a,b)),startScale:userTransform.scale};}
 function updateTransformGesture(){if(activeTouchPoints.size<2)return;if(!transformGesture)beginTransformGesture();const[a,b]=Array.from(activeTouchPoints.values()).slice(0,2);if(!a||!b||!transformGesture)return;const d=Math.max(1,dist(a,b));const ratio=d/transformGesture.startDistance;userTransform.scale=clamp(transformGesture.startScale*ratio,0.85,3.4);}
 function pointerUp(pid){const held=activePointers.get(pid);if(held){flashKey(held.key,false);if(held.voice)releaseVoice(held.voice);activePointers.delete(pid);}dragState=null;}
 
 // ═══════════════════════════════════════════════════════════════════
-// MARKER BRIDGE + RENDER LOOP
+// MARKER BRIDGE: attach/detach Three.js groups to AR.js markers
 // ═══════════════════════════════════════════════════════════════════
-const MODEL_SCALE = 0.022;
 
-function syncModelToMarker(){
-  if(!state.activeMarker||!activeGroup)return;
-  const markerId = state.activeMarker==='drum'?'#drum-marker':'#synth-marker';
+function attachGroupToMarker(markerType) {
+  const markerId = markerType==='drum' ? '#drum-marker' : '#synth-marker';
   const markerEl = document.querySelector(markerId);
-  if(!markerEl||!markerEl.object3D||!markerEl.object3D.visible)return;
-  const m = markerEl.object3D.matrixWorld;
-  const matrix = new THREE.Matrix4().copy(m);
-  // Apply user scale
-  const pos=new THREE.Vector3(), quat=new THREE.Quaternion(), scl=new THREE.Vector3();
-  matrix.decompose(pos,quat,scl);
-  const us = userTransform.scale * MODEL_SCALE;
-  matrix.compose(pos, quat, new THREE.Vector3(us,us,us));
-  activeGroup.matrix.copy(matrix);
-  activeGroup.matrixAutoUpdate = false;
-  activeGroup.matrixWorldNeedsUpdate = true;
+  if (!markerEl) { log('ERROR: marker not found: '+markerId); return; }
+  const group = markerType==='drum' ? drumGroup : synthGroup;
+  const markerObj = markerEl.object3D;
+
+  // Detach from previous parent
+  if (group.parent) group.parent.remove(group);
+
+  // Attach as child of marker's object3D
+  markerObj.add(group);
+  group.position.set(0, 0, 0);
+  group.visible = true;
+  group.matrixAutoUpdate = true;
+  log(markerType==='drum' ? '🥁 Drum attached to marker' : '🎹 Synth attached to marker');
 }
 
-function onMarkerFound(markerType){
+function detachGroup(markerType) {
+  const group = markerType==='drum' ? drumGroup : synthGroup;
+  group.visible = false;
+  if (group.parent) group.parent.remove(group);
+  group.matrixAutoUpdate = false;
+}
+
+function onMarkerFound(markerType) {
   unlockAudio();
+  log('markerFound: ' + markerType);
   state.activeMarker = markerType;
-  synthGroup.visible = markerType==='synth';
-  drumGroup.visible = markerType==='drum';
-  activeGroup = markerType==='drum'?drumGroup:synthGroup;
-  if(markerType==='drum')updateDrumDisplay('QR DRUM','128 BPM','READY');
-  else updateDisplay(state.currentPreset,state.currentWave,'READY');
-  document.body.classList.add('ar-active');
+
+  // Hide both groups first, then show the right one
+  synthGroup.visible = false;
+  drumGroup.visible = false;
+
+  attachGroupToMarker(markerType);
+
+  activeGroup = markerType==='drum' ? drumGroup : synthGroup;
+
+  if (markerType==='drum') { updateDrumDisplay('QR DRUM','128 BPM','READY'); }
+  else { updateDisplay(state.currentPreset,state.currentWave,'READY'); }
+
+  $('#ar-scene').classList.add('ar-active');
   setPrompt(markerType==='drum'?'QR Drum Machine':'AR Mini Synth Workstation');
 }
 
-function onMarkerLost(){
-  state.activeMarker=null;synthGroup.visible=false;drumGroup.visible=false;activeGroup=null;
-  cancelAllVoices();document.body.classList.remove('ar-active');setPrompt('请将乐器识别卡放入画面中');
+function onMarkerLost() {
+  log('markerLost');
+  const prevType = state.activeMarker;
+  state.activeMarker = null;
+  if (prevType) detachGroup(prevType);
+  synthGroup.visible = false; drumGroup.visible = false; activeGroup = null;
+  cancelAllVoices();
+  $('#ar-scene').classList.remove('ar-active');
+  setPrompt('请将乐器识别卡放入画面中');
 }
 
-function cancelAllVoices(){activePointers.forEach(h=>{flashKey(h.key,false);if(h.voice)releaseVoice(h.voice,{force:true});});activePointers.clear();dragState=null;}
-function setPrompt(t){const el=$('#prompt');if(el)el.textContent=t;}
-
-function renderLoop(){
-  requestAnimationFrame(renderLoop);
-  resizeOverlay();
-  syncModelToMarker();
-  renderer.render(scene, camera);
+function cancelAllVoices() {
+  activePointers.forEach(h=>{flashKey(h.key,false);if(h.voice)releaseVoice(h.voice,{force:true});});
+  activePointers.clear(); dragState=null;
 }
+
+function setPrompt(t) { const el=$('#prompt'); if(el) el.textContent=t; }
 
 // ═══════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════
-function bindEvents(){
-  $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');$('#overlay').classList.add('interactive');resizeOverlay();});
+function bindEvents() {
+  $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');});
   $('#reset-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();userTransform.scale=1;transformGesture=null;activeTouchPoints.clear();cancelAllVoices();setPrompt('视角已重置，请重新对准识别卡');});
+
   $('#synth-marker').addEventListener('markerFound',()=>onMarkerFound('synth'));
   $('#synth-marker').addEventListener('markerLost',()=>{if(state.activeMarker==='synth')onMarkerLost();});
   $('#drum-marker').addEventListener('markerFound',()=>onMarkerFound('drum'));
   $('#drum-marker').addEventListener('markerLost',()=>{if(state.activeMarker==='drum')onMarkerLost();});
-  let taps=0;document.addEventListener('pointerdown',(e)=>{if(e.target===document.body||e.target===document.documentElement){taps++;if(taps>=3){$('#debug').classList.toggle('show');taps=0;}setTimeout(()=>{taps=0;},600);}});
-  window.addEventListener('resize',resizeOverlay);
+
+  // Show debug on load
+  setTimeout(()=>$('#debug').classList.add('show'), 1000);
+
+  let taps=0;
+  document.addEventListener('pointerdown',(e)=>{if(e.target===document.body||e.target===document.documentElement){taps++;if(taps>=3){$('#debug').classList.toggle('show');taps=0;}setTimeout(()=>{taps=0;},600);}});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audioCtx)audioCtx.resume?.().catch(()=>{});});
 }
 
-function init(){
-  const sceneEl=$('#ar-scene');
-  if(!sceneEl?.hasLoaded){sceneEl?.addEventListener('loaded',init);return;}
-  initThreeJS();
+function init() {
+  const scene = $('#ar-scene');
+  if (!scene?.hasLoaded) { scene?.addEventListener('loaded',init); return; }
+  buildModels();
   bindEvents();
-  renderLoop();
   setPrompt('请将乐器识别卡放入画面中');
+  log('AR Synth Workstation ready');
 }
 
-const sceneEl=$('#ar-scene');
-if(sceneEl?.hasLoaded)init();else sceneEl?.addEventListener('loaded',init);
+const scene = $('#ar-scene');
+if (scene?.hasLoaded) init(); else scene?.addEventListener('loaded',init);
 </script>
 </body>
 </html>
