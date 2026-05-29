@@ -1,0 +1,651 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>数智策划系统 - 科技商业平台</title>
+  <meta name="description" content="数智策划系统：一站式活动策划与执行平台，集成策划方案、文案优化、AI效果图、资源库、模板库，打通从想法到落地执行。" />
+  <style>
+    :root {
+      --bg: #060b16;
+      --panel: #0f172a;
+      --panel-soft: #111c35;
+      --line: #203055;
+      --text: #e7eefc;
+      --muted: #98a8cc;
+      --brand: #4b8dff;
+      --brand-2: #20d7ff;
+      --ok: #2fd2a4;
+      --warn: #ffca57;
+      --shadow: 0 18px 40px rgba(0, 0, 0, .35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(80rem 45rem at 90% -5%, rgba(75, 141, 255, .20), transparent 60%),
+        radial-gradient(60rem 45rem at -5% 10%, rgba(32, 215, 255, .13), transparent 60%),
+        var(--bg);
+      line-height: 1.6;
+    }
+
+    .container { width: min(1180px, 92vw); margin: 0 auto; }
+
+    .nav-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 99;
+      backdrop-filter: blur(8px);
+      background: rgba(6, 11, 22, .72);
+      border-bottom: 1px solid rgba(117, 145, 207, .18);
+    }
+    .nav {
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .brand-badge {
+      width: 34px; height: 34px; border-radius: 10px;
+      background: linear-gradient(140deg, var(--brand), var(--brand-2));
+      box-shadow: 0 10px 25px rgba(43, 129, 255, .45);
+      display: grid; place-items: center; color: #02112b; font-weight: 900;
+    }
+    .nav-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: .2s ease;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(87, 127, 220, .16); }
+
+    .btn {
+      border: 1px solid transparent;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #03112a;
+      padding: 11px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .2s ease, box-shadow .2s ease;
+      box-shadow: 0 10px 24px rgba(50, 134, 255, .34);
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.ghost {
+      background: transparent;
+      color: var(--text);
+      border-color: rgba(140, 166, 225, .35);
+      box-shadow: none;
+    }
+
+    .hero { padding: 78px 0 38px; }
+    .hero-grid {
+      display: grid;
+      gap: 28px;
+      grid-template-columns: 1.05fr .95fr;
+      align-items: center;
+    }
+    .kicker {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(118, 159, 255, .36);
+      color: #b8cbff;
+      font-size: 13px;
+      margin-bottom: 14px;
+      background: rgba(37, 69, 132, .24);
+    }
+    h1 {
+      font-size: clamp(28px, 4.4vw, 48px);
+      line-height: 1.15;
+      margin: 0 0 14px;
+      letter-spacing: .2px;
+    }
+    .lead {
+      margin: 0 0 24px;
+      color: #b7c7ea;
+      font-size: 16px;
+      max-width: 58ch;
+    }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+    .hero-tags {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      color: var(--muted); font-size: 13px;
+    }
+    .hero-tags span {
+      border: 1px solid rgba(132, 157, 212, .24);
+      background: rgba(54, 80, 135, .18);
+      border-radius: 999px;
+      padding: 4px 10px;
+    }
+
+    .panel {
+      background: linear-gradient(175deg, rgba(17, 28, 53, .92), rgba(10, 18, 35, .94));
+      border: 1px solid rgba(132, 157, 212, .20);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+    .metrics {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .metric {
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(9, 17, 34, .62);
+      border: 1px solid rgba(133, 165, 222, .17);
+    }
+    .metric .v { font-size: 28px; font-weight: 800; line-height: 1.1; }
+    .metric .k { color: var(--muted); font-size: 13px; }
+    .metric .up { color: var(--ok); font-size: 12px; }
+
+    section { padding: 46px 0; }
+    .section-head { margin-bottom: 20px; }
+    .section-head h2 { margin: 0 0 8px; font-size: clamp(22px, 3.2vw, 34px); }
+    .section-head p { margin: 0; color: var(--muted); }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .feature {
+      padding: 18px;
+      border-radius: 14px;
+      background: rgba(15, 24, 45, .85);
+      border: 1px solid rgba(132, 157, 212, .18);
+    }
+    .feature .icon {
+      width: 34px; height: 34px; border-radius: 10px; margin-bottom: 10px;
+      display: grid; place-items: center; font-weight: 800;
+      background: linear-gradient(145deg, rgba(75, 141, 255, .25), rgba(32, 215, 255, .25));
+      border: 1px solid rgba(111, 150, 239, .32);
+    }
+    .feature h3 { margin: 0 0 6px; font-size: 18px; }
+    .feature p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .step {
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(128, 159, 214, .2);
+      background: rgba(13, 22, 42, .8);
+      position: relative;
+    }
+    .step .idx {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: grid; place-items: center;
+      background: rgba(68, 113, 216, .3);
+      border: 1px solid rgba(122, 153, 219, .45);
+      font-weight: 700; margin-bottom: 8px;
+    }
+    .step h4 { margin: 0 0 6px; font-size: 16px; }
+    .step p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .cases {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .case {
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(128, 159, 214, .2);
+      background: rgba(14, 23, 44, .86);
+    }
+    .pill {
+      font-size: 12px; color: #b7cbff;
+      padding: 4px 9px; border-radius: 999px;
+      border: 1px solid rgba(133, 164, 223, .3);
+      background: rgba(76, 121, 224, .17);
+      margin-right: 6px;
+    }
+    .case h3 { margin: 10px 0 8px; font-size: 18px; }
+    .case ul { margin: 0; padding-left: 18px; color: #c8d7f4; }
+    .case li { margin: 6px 0; }
+
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+    .plan {
+      padding: 20px;
+      border-radius: 14px;
+      border: 1px solid rgba(129, 164, 227, .22);
+      background: rgba(14, 23, 44, .82);
+    }
+    .plan.hot {
+      border-color: rgba(68, 147, 255, .62);
+      box-shadow: 0 0 0 1px rgba(68, 147, 255, .34) inset;
+    }
+    .plan h3 { margin: 0 0 6px; }
+    .price { font-size: 30px; font-weight: 800; margin: 10px 0; }
+    .price small { font-size: 14px; color: var(--muted); font-weight: 500; }
+    .plan ul { margin: 0; padding-left: 18px; color: #c7d8f6; }
+    .plan li { margin: 6px 0; }
+
+    .data-board {
+      margin-top: 16px;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(129, 164, 227, .22);
+      background: rgba(9, 16, 31, .65);
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 90px 1fr 52px;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      margin: 8px 0;
+    }
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(68, 93, 146, .35);
+      overflow: hidden;
+    }
+    .bar > i {
+      display: block; height: 100%;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    .cta {
+      padding: 22px;
+      border-radius: 16px;
+      border: 1px solid rgba(115, 157, 242, .38);
+      background: linear-gradient(140deg, rgba(14, 30, 67, .92), rgba(8, 20, 45, .95));
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      align-items: center;
+    }
+    .cta p { margin: 6px 0 0; color: #c3d4f6; }
+
+    footer {
+      margin-top: 36px;
+      border-top: 1px solid rgba(128, 160, 219, .2);
+      color: #99abd1;
+      font-size: 13px;
+      padding: 18px 0 30px;
+    }
+
+    .drawer {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 8, 18, .68);
+      display: none;
+      z-index: 120;
+      padding: 16px;
+    }
+    .drawer.show { display: grid; place-items: center; }
+    .dialog {
+      width: min(560px, 96vw);
+      background: #0b1328;
+      border: 1px solid rgba(128, 160, 219, .35);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .dialog h3 { margin: 0 0 8px; }
+    .dialog p { margin: 0 0 12px; color: var(--muted); }
+    .dialog .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .dialog input, .dialog textarea {
+      width: 100%; color: var(--text); background: #091124;
+      border: 1px solid rgba(124, 154, 214, .34);
+      border-radius: 9px; padding: 10px;
+      font: inherit;
+    }
+    .dialog textarea { min-height: 90px; resize: vertical; }
+    .dialog .actions { display: flex; justify-content: flex-end; gap: 10px; }
+    .toast {
+      position: fixed;
+      right: 16px; bottom: 16px;
+      border-radius: 10px;
+      background: #0d1f3f;
+      border: 1px solid rgba(121, 160, 240, .45);
+      color: #d9e7ff;
+      padding: 10px 14px;
+      font-size: 13px;
+      opacity: 0; transform: translateY(8px);
+      transition: .2s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 980px) {
+      .hero-grid, .cta { grid-template-columns: 1fr; }
+      .grid-3, .flow, .plan-grid { grid-template-columns: 1fr 1fr; }
+      .cases { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .grid-3, .flow, .plan-grid, .metric-grid { grid-template-columns: 1fr; }
+      .dialog .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="nav-wrap">
+    <div class="container nav">
+      <div class="brand">
+        <span class="brand-badge">智</span>
+        <span>数智策划系统</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#ability">能力矩阵</a>
+        <a href="#flow">全链路流程</a>
+        <a href="#cases">应用场景</a>
+        <a href="#pricing">方案报价</a>
+        <a href="#contact">线索转化</a>
+      </nav>
+      <button class="btn" id="openFormBtn">申请演示</button>
+    </div>
+  </div>
+
+  <header class="hero container">
+    <div class="hero-grid">
+      <div>
+        <span class="kicker">AI + 策划 + 执行一体化平台</span>
+        <h1>构建数智策划系统，<br />打通从想法到落地执行的全链路</h1>
+        <p class="lead">
+          平台集成活动策划方案、文案优化、AI效果图、资源库、模板库等核心能力，
+          面向活动策划公司与个人用户，提供针对性、可复制、可交付的数字化策划支持。
+        </p>
+        <div class="hero-actions">
+          <button class="btn" onclick="scrollToId('contact')">获取定制方案</button>
+          <button class="btn ghost" onclick="scrollToId('pricing')">查看报价模型</button>
+        </div>
+        <div class="hero-tags">
+          <span>零安装 Web 平台</span>
+          <span>策略引擎 + 生成引擎</span>
+          <span>行业模板可持续扩容</span>
+          <span>支持活动全流程执行管理</span>
+        </div>
+      </div>
+
+      <aside class="panel metrics">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>平台运营看板（示例）</strong>
+          <span style="font-size:12px;color:var(--muted)">实时更新</span>
+        </div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="v">1,286</div>
+            <div class="k">本月策划任务数</div>
+            <div class="up">+18.2%</div>
+          </div>
+          <div class="metric">
+            <div class="v">93.6%</div>
+            <div class="k">方案一次通过率</div>
+            <div class="up">+6.4%</div>
+          </div>
+          <div class="metric">
+            <div class="v">52%</div>
+            <div class="k">方案输出效率提升</div>
+            <div class="up">同比提升</div>
+          </div>
+          <div class="metric">
+            <div class="v">4.7/5</div>
+            <div class="k">客户满意度评分</div>
+            <div class="up">稳定增长</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <main>
+    <section id="ability" class="container">
+      <div class="section-head">
+        <h2>能力矩阵：从内容生成到交付复盘</h2>
+        <p>围绕“策划决策、内容生产、执行协同、资产沉淀”构建统一能力中台。</p>
+      </div>
+      <div class="grid-3">
+        <article class="feature">
+          <div class="icon">01</div>
+          <h3>活动策划引擎</h3>
+          <p>输入预算、目标、受众与场地约束，自动生成活动框架、流程表与风险清单。</p>
+        </article>
+        <article class="feature">
+          <div class="icon">02</div>
+          <h3>文案优化中枢</h3>
+          <p>支持主KV、长文案、渠道文案与口播词多版本输出，统一品牌语气与表达质量。</p>
+        </article>
+        <article class="feature">
+          <div class="icon">03</div>
+          <h3>AI效果图中心</h3>
+          <p>快速生成舞美、动线、互动装置、传播海报概念图，缩短方案评审与沟通周期。</p>
+        </article>
+        <article class="feature">
+          <div class="icon">04</div>
+          <h3>资源库与供应商库</h3>
+          <p>聚合场地、物料、执行团队、摄影摄像等资源，并支持标签检索与评分排序。</p>
+        </article>
+        <article class="feature">
+          <div class="icon">05</div>
+          <h3>模板资产平台</h3>
+          <p>沉淀发布会、路演、巡展、品牌快闪等模板，复制可用，减少重复策划成本。</p>
+        </article>
+        <article class="feature">
+          <div class="icon">06</div>
+          <h3>项目驾驶舱</h3>
+          <p>聚合里程碑、预算消耗、执行进度与风险状态，实现项目可视化管理与复盘。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="flow" class="container">
+      <div class="section-head">
+        <h2>全链路流程：一套系统覆盖策划与执行</h2>
+        <p>针对活动策划公司与个人用户，构建“提案更快、执行更稳、沉淀更强”的业务闭环。</p>
+      </div>
+      <div class="flow">
+        <div class="step">
+          <div class="idx">1</div>
+          <h4>需求诊断</h4>
+          <p>明确活动目标、预算区间、受众人群与传播渠道，自动生成执行边界。</p>
+        </div>
+        <div class="step">
+          <div class="idx">2</div>
+          <h4>方案共创</h4>
+          <p>策略草案、文案、效果图同步生成，分钟级输出可评审的完整提案版本。</p>
+        </div>
+        <div class="step">
+          <div class="idx">3</div>
+          <h4>执行排程</h4>
+          <p>智能拆解任务、自动分配角色与时间节点，支持并行协作和进度追踪。</p>
+        </div>
+        <div class="step">
+          <div class="idx">4</div>
+          <h4>数据复盘</h4>
+          <p>汇总过程数据和结果指标，沉淀模板与经验，形成可复用业务资产。</p>
+        </div>
+      </div>
+
+      <div class="data-board">
+        <strong>行业场景适配度（示例）</strong>
+        <div class="bar-row"><span>品牌发布会</span><div class="bar"><i style="width:92%"></i></div><span>92%</span></div>
+        <div class="bar-row"><span>政企峰会</span><div class="bar"><i style="width:87%"></i></div><span>87%</span></div>
+        <div class="bar-row"><span>城市文旅节</span><div class="bar"><i style="width:90%"></i></div><span>90%</span></div>
+        <div class="bar-row"><span>校园活动</span><div class="bar"><i style="width:84%"></i></div><span>84%</span></div>
+      </div>
+    </section>
+
+    <section id="cases" class="container">
+      <div class="section-head">
+        <h2>应用场景：可展示、可交付、可复用</h2>
+        <p>用“标准化底座 + 定制化能力”服务不同规模与阶段的活动组织方。</p>
+      </div>
+      <div class="cases">
+        <article class="case">
+          <span class="pill">B端策划公司</span><span class="pill">团队协同</span>
+          <h3>策划公司增长方案</h3>
+          <ul>
+            <li>多项目并行管理，统一流程模板，交付质量稳定。</li>
+            <li>从提案到执行文档自动联动，降低人力重复投入。</li>
+            <li>客户沟通材料实时更新，缩短签单周期。</li>
+          </ul>
+        </article>
+        <article class="case">
+          <span class="pill">个人策划师</span><span class="pill">轻量起步</span>
+          <h3>独立策划师效率方案</h3>
+          <ul>
+            <li>一人可完成策略、文案、视觉概念初稿的全链路输出。</li>
+            <li>模板与资源库快速拼装，实现“小团队大产能”。</li>
+            <li>自动复盘沉淀，持续提升下一单转化率。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="pricing" class="container">
+      <div class="section-head">
+        <h2>方案报价：按规模分层，按场景扩展</h2>
+        <p>可作为静态展示报价页，也可后续接入真实支付与客户系统。</p>
+      </div>
+      <div class="plan-grid">
+        <article class="plan">
+          <h3>基础版</h3>
+          <div class="price">¥1,980<small>/年</small></div>
+          <ul>
+            <li>个人账号 1 个</li>
+            <li>活动模板库（基础）</li>
+            <li>AI文案与方案生成配额</li>
+            <li>标准工单与进度管理</li>
+          </ul>
+        </article>
+        <article class="plan hot">
+          <h3>专业版（主推）</h3>
+          <div class="price">¥12,800<small>/年</small></div>
+          <ul>
+            <li>团队账号 10 个</li>
+            <li>高阶模板库 + 资源库</li>
+            <li>AI效果图批量生成功能</li>
+            <li>项目驾驶舱 + 客户周报</li>
+          </ul>
+        </article>
+        <article class="plan">
+          <h3>企业定制版</h3>
+          <div class="price">按需报价<small>私有部署</small></div>
+          <ul>
+            <li>组织架构与权限体系</li>
+            <li>行业专属模板共建</li>
+            <li>数据接口与第三方打通</li>
+            <li>专属顾问与交付支持</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section id="contact" class="container">
+      <div class="cta">
+        <div>
+          <h2 style="margin:0 0 6px;">让策划更快，让执行更稳</h2>
+          <p>
+            数智策划系统将活动策划方案、文案优化、AI效果图、资源库与模板库统一到一个平台，
+            帮助团队用更短时间完成更高质量交付。
+          </p>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+          <button class="btn" id="openFormBtn2">预约产品演示</button>
+          <button class="btn ghost" onclick="window.scrollTo({top:0,behavior:'smooth'})">返回顶部</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div>© 2026 数智策划系统（演示页面）| 科技商业风静态单页</div>
+    </div>
+  </footer>
+
+  <div class="drawer" id="drawer">
+    <div class="dialog">
+      <h3>预约演示（静态表单示例）</h3>
+      <p>此页面为静态展示版，提交后会在前端给出成功提示，便于演示流程。</p>
+      <div class="row">
+        <input id="name" placeholder="联系人姓名" />
+        <input id="phone" placeholder="联系电话" />
+      </div>
+      <div class="row">
+        <input id="company" placeholder="公司/团队名称" />
+        <input id="role" placeholder="岗位角色（如策划总监）" />
+      </div>
+      <textarea id="demand" placeholder="请简要描述活动类型、规模、预算与预期目标"></textarea>
+      <div class="actions">
+        <button class="btn ghost" id="closeBtn">取消</button>
+        <button class="btn" id="submitBtn">提交需求</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">提交成功：顾问将在 1 个工作日内联系你。</div>
+
+  <script>
+    function scrollToId(id) {
+      var el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    var drawer = document.getElementById("drawer");
+    var toast = document.getElementById("toast");
+
+    function openDrawer() { drawer.classList.add("show"); }
+    function closeDrawer() { drawer.classList.remove("show"); }
+
+    document.getElementById("openFormBtn").addEventListener("click", openDrawer);
+    document.getElementById("openFormBtn2").addEventListener("click", openDrawer);
+    document.getElementById("closeBtn").addEventListener("click", closeDrawer);
+    drawer.addEventListener("click", function (e) {
+      if (e.target === drawer) closeDrawer();
+    });
+
+    document.getElementById("submitBtn").addEventListener("click", function () {
+      var name = document.getElementById("name").value.trim();
+      var phone = document.getElementById("phone").value.trim();
+      if (!name || !phone) {
+        showToast("请先填写姓名和联系电话。");
+        return;
+      }
+      closeDrawer();
+      showToast("提交成功：顾问将在 1 个工作日内联系你。");
+    });
+
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add("show");
+      setTimeout(function () { toast.classList.remove("show"); }, 2200);
+    }
+  </script>
+</body>
+</html>
