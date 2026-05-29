@@ -173,7 +173,7 @@ const WHITE_PCS = new Set([0,2,4,5,7,9,11]);
 const DRUM_CONTROLS = { tone:0.62, decay:0.52, drive:0.25, space:0.35, level:0.82 };
 
 // ── Three.js ───────────────────────────────────────────────────────
-let scene3, camera3, raycaster, pointer;
+let aframeScene, aframeCamera, raycaster, pointer;
 let synthGroup, drumGroup, activeGroup = null;
 let screenMaterial, drumScreenMaterial;
 let interactives = [];
@@ -228,22 +228,24 @@ function addLabel(parent,text,x,y,z,w,h,opts={}) {
 // THREE.JS INIT
 // ═══════════════════════════════════════════════════════════════════
 function initThreeJS() {
-  const canvas = $('#ar-scene').canvas;
-  scene3 = new THREE.Scene();
-  camera3 = new THREE.PerspectiveCamera(42, 2, 0.1, 100);
-  camera3.position.set(0, 0, 6.2);
+  const sceneEl = $('#ar-scene');
+  aframeScene = sceneEl.object3D;
+  aframeCamera = sceneEl.camera;
+  const canvas = sceneEl.canvas;
+
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
 
-  scene3.add(new THREE.AmbientLight(0xffffff, 0.9));
-  const key = new THREE.DirectionalLight(0xffffff, 1.55); key.position.set(1.8,3.2,4.0); scene3.add(key);
-  const rim = new THREE.DirectionalLight(0x67f4ff, 1.1); rim.position.set(-2.4,1.2,2.8); scene3.add(rim);
+  // Add ambient + directional lights to A-Frame's scene
+  aframeScene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const key = new THREE.DirectionalLight(0xffffff, 1.55); key.position.set(1.8,3.2,4.0); aframeScene.add(key);
+  const rim = new THREE.DirectionalLight(0x67f4ff, 1.1); rim.position.set(-2.4,1.2,2.8); aframeScene.add(rim);
 
   synthGroup = new THREE.Group(); synthGroup.name='AR_Mini_Synth_Workstation';
-  synthGroup.visible=false; synthGroup.matrixAutoUpdate=false; scene3.add(synthGroup);
+  synthGroup.visible = false;
 
   drumGroup = new THREE.Group(); drumGroup.name='QR_Drum_Machine';
-  drumGroup.visible=false; drumGroup.matrixAutoUpdate=false; scene3.add(drumGroup);
+  drumGroup.visible = false;
 
   buildSynthModel();
   buildDrumMachineModel();
@@ -646,25 +648,40 @@ function updateDragControl(event){
 
 function bindCanvasEvents(canvas){
   if(!canvas||canvas._synthBound)return;canvas._synthBound=true;
-  const getHit=(event)=>{const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,camera3);const hits=raycaster.intersectObjects(interactives,false);return hits.find(h=>h.object.visible!==false&&isDescendantOf(h.object,activeGroup));};
+  const getHit=(event)=>{const rect=canvas.getBoundingClientRect();pointer.x=((event.clientX-rect.left)/rect.width)*2-1;pointer.y=-((event.clientY-rect.top)/rect.height)*2+1;raycaster.setFromCamera(pointer,aframeCamera);const hits=raycaster.intersectObjects(interactives,false);return hits.find(h=>h.object.visible!==false&&isDescendantOf(h.object,activeGroup));};
   canvas.addEventListener('pointerdown',(event)=>{event.preventDefault();try{canvas.setPointerCapture(event.pointerId);}catch(e){}activeTouchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});if(activeTouchPoints.size>=2){beginTransformGesture();return;}if(!state.activeMarker){unlockAudio();return;}const hit=getHit(event);if(hit)handleControl(hit.object.userData.interaction,hit,event);},{passive:false});
   canvas.addEventListener('pointermove',(event)=>{if(activeTouchPoints.has(event.pointerId))activeTouchPoints.set(event.pointerId,{x:event.clientX,y:event.clientY});if(activeTouchPoints.size>=2){event.preventDefault();updateTransformGesture();return;}if(!dragState)return;event.preventDefault();updateDragControl(event);},{passive:false});
   const finish=(event)=>{const wt=Boolean(transformGesture);activeTouchPoints.delete(event.pointerId);if(activeTouchPoints.size<2)transformGesture=null;if(!wt)pointerUp(event.pointerId);};
   canvas.addEventListener('pointerup',finish);canvas.addEventListener('pointercancel',finish);canvas.addEventListener('touchstart',()=>unlockAudio(),{passive:true});
 }
 function beginTransformGesture(){const[a,b]=Array.from(activeTouchPoints.values()).slice(0,2);if(!a||!b)return;transformGesture={startDistance:Math.max(1,dist(a,b)),startScale:userTransform.scale};}
-function updateTransformGesture(){if(activeTouchPoints.size<2)return;if(!transformGesture)beginTransformGesture();const[a,b]=Array.from(activeTouchPoints.values()).slice(0,2);if(!a||!b||!transformGesture)return;const d=Math.max(1,dist(a,b));const ratio=d/transformGesture.startDistance;userTransform.scale=clamp(transformGesture.startScale*ratio,0.85,3.4);}
+function updateTransformGesture(){if(activeTouchPoints.size<2)return;if(!transformGesture)beginTransformGesture();const[a,b]=Array.from(activeTouchPoints.values()).slice(0,2);if(!a||!b||!transformGesture)return;const d=Math.max(1,dist(a,b));const ratio=d/transformGesture.startDistance;userTransform.scale=clamp(transformGesture.startScale*ratio,0.85,3.4);applyScale();}
 function pointerUp(pid){const held=activePointers.get(pid);if(held){flashKey(held.key,false);if(held.voice)releaseVoice(held.voice);activePointers.delete(pid);}dragState=null;}
 
 // ═══════════════════════════════════════════════════════════════════
 // MARKER BRIDGE
 // ═══════════════════════════════════════════════════════════════════
-const FIXED_SCALE = 0.9;
+const MODEL_SCALE = 0.025;
+
+function applyScale() {
+  const s = userTransform.scale * MODEL_SCALE;
+  [synthGroup, drumGroup].forEach(g => { if (g.visible) g.scale.set(s, s, s); });
+}
 
 function onMarkerFound(markerType) {
   unlockAudio();
   state.activeMarker = markerType;
   const group = markerType==='drum' ? drumGroup : synthGroup;
+
+  // Reparent group to marker's object3D so it follows AR tracking
+  const markerId = markerType==='drum' ? '#drum-marker' : '#synth-marker';
+  const markerEl = document.querySelector(markerId);
+  if (markerEl && markerEl.object3D) {
+    markerEl.object3D.add(group);
+    group.position.set(0, 0, 0);
+    applyScale();
+    group.visible = true;
+  }
 
   if (markerType==='drum') { updateDrumDisplay('QR DRUM','128 BPM','READY'); }
   else { updateDisplay(state.currentPreset,state.currentWave,'READY'); }
@@ -678,7 +695,10 @@ function onMarkerFound(markerType) {
 
 function onMarkerLost() {
   state.activeMarker = null;
-  synthGroup.visible = false; drumGroup.visible = false; activeGroup = null;
+
+  // Detach groups from markers
+  [synthGroup, drumGroup].forEach(g => { g.visible = false; if (g.parent) g.parent.remove(g); });
+  activeGroup = null;
   cancelAllVoices();
   $('#ar-scene').classList.remove('ar-active');
   setPrompt('请将乐器识别卡放入画面中');
@@ -691,51 +711,14 @@ function cancelAllVoices() {
 
 function setPrompt(t) { const el=$('#prompt'); if(el) el.textContent=t; }
 
-// ═══════════════════════════════════════════════════════════════════
-// RENDER: sync model to AR.js marker position
-// ═══════════════════════════════════════════════════════════════════
-function syncModelToMarker() {
-  if (!state.activeMarker) return;
-  const markerId = state.activeMarker==='drum' ? '#drum-marker' : '#synth-marker';
-  const markerEl = document.querySelector(markerId);
-  if (!markerEl || !markerEl.object3D || !markerEl.object3D.visible) return;
-
-  const markerObj = markerEl.object3D;
-  const pos = new THREE.Vector3();
-  const quat = new THREE.Quaternion();
-  const scl = new THREE.Vector3();
-  markerObj.matrixWorld.decompose(pos, quat, scl);
-
-  const us = userTransform.scale * FIXED_SCALE;
-  const matrix = new THREE.Matrix4().compose(pos, quat, new THREE.Vector3(us, us, us));
-
-  if (activeGroup) {
-    activeGroup.matrix.copy(matrix);
-    activeGroup.matrixAutoUpdate = false;
-    activeGroup.matrixWorldNeedsUpdate = true;
-  }
-}
-
-function renderLoop() {
-  requestAnimationFrame(renderLoop);
-  syncModelToMarker();
-  if (activeGroup && activeGroup.visible) {
-    const r = $('#ar-scene').renderer;
-    if (r) {
-      const ac = r.autoClear; r.autoClear = false;
-      r.clearDepth();
-      r.render(scene3, camera3);
-      r.autoClear = ac;
-    }
-  }
-}
+// Marker found handles reparenting. A-Frame renders everything.
 
 // ═══════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 function bindEvents() {
   $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');$('#ar-scene').classList.add('active');});
-  $('#reset-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();userTransform.scale=1;transformGesture=null;activeTouchPoints.clear();cancelAllVoices();setPrompt('视角已重置，请重新对准识别卡');});
+  $('#reset-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();userTransform.scale=1;transformGesture=null;activeTouchPoints.clear();applyScale();cancelAllVoices();setPrompt('视角已重置，请重新对准识别卡');});
 
   $('#synth-marker').addEventListener('markerFound',()=>onMarkerFound('synth'));
   $('#synth-marker').addEventListener('markerLost',()=>{if(state.activeMarker==='synth')onMarkerLost();});
@@ -744,7 +727,7 @@ function bindEvents() {
 
   let taps=0;
   document.addEventListener('pointerdown',(e)=>{if(e.target===document.body||e.target===document.documentElement){taps++;if(taps>=3){$('#debug').classList.toggle('show');taps=0;}setTimeout(()=>{taps=0;},600);}});
-  window.addEventListener('resize',()=>{const rect=$('#ar-scene').getBoundingClientRect();if(camera3){camera3.aspect=rect.width/Math.max(1,rect.height);camera3.updateProjectionMatrix();}});
+  // A-Frame handles its own camera resize
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audioCtx)audioCtx.resume?.().catch(()=>{});});
 }
 
@@ -753,7 +736,6 @@ function init() {
   if (!scene?.hasLoaded) { scene?.addEventListener('loaded',init); return; }
   initThreeJS();
   bindEvents();
-  renderLoop();
   setPrompt('请将乐器识别卡放入画面中');
 }
 
