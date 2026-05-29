@@ -7,8 +7,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>AR Synth Workstation</title>
 
-  <script src="aframe.min.js"></script>
-  <script src="aframe-ar.jsold"></script>
+  <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ar.js@3.3.3/aframe/build/aframe-ar.js"></script>
 
   <style>
     :root {
@@ -103,7 +103,7 @@
   <a-scene id="ar-scene"
     embedded
     vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;">
+    arjs>
 
     <!-- 合成器 marker -->
     <a-marker id="synth-marker" type="pattern" url="assets/patterns/pattern-hechengqi.patt"
