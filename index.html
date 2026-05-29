@@ -24,6 +24,7 @@
       -webkit-tap-highlight-color: transparent;
       overscroll-behavior: none;
     }
+    body { margin: 0; overflow: hidden; }
 
     /* Welcome */
     .welcome-overlay {
@@ -51,7 +52,8 @@
     .welcome-btn:active { background: rgba(247,194,77,0.38); transform: scale(0.96); }
 
     /* AR Scene */
-    #ar-scene { position: fixed; inset: 0; z-index: 1; }
+    #ar-scene { display: none; }
+    #ar-scene.active { display: block; }
 
     /* HUD */
     .hud { position: fixed; z-index: 10; top: 16px; left: 16px; display: flex; gap: 10px; flex-wrap: wrap; pointer-events: none; }
@@ -90,7 +92,7 @@
     .debug-panel b { color: #f7c24d; }
   </style>
 </head>
-<body>
+<body style="margin:0;overflow:hidden;">
 
   <!-- Welcome -->
   <div class="welcome-overlay" id="welcome">
@@ -103,7 +105,7 @@
   <a-scene id="ar-scene"
     embedded
     vr-mode-ui="enabled: false"
-    arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+    arjs="sourceType: webcam; debugUIEnabled: false;"
     renderer="antialias: true; alpha: true; powerPreference: high-performance">
 
     <!-- 合成器 marker -->
@@ -732,7 +734,7 @@ function renderLoop() {
 // INIT
 // ═══════════════════════════════════════════════════════════════════
 function bindEvents() {
-  $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');});
+  $('#start-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();unlockAudio();$('#welcome').classList.add('hidden');$('#ar-scene').classList.add('active');});
   $('#reset-btn').addEventListener('pointerdown',(e)=>{e.preventDefault();userTransform.scale=1;transformGesture=null;activeTouchPoints.clear();cancelAllVoices();setPrompt('视角已重置，请重新对准识别卡');});
 
   $('#synth-marker').addEventListener('markerFound',()=>onMarkerFound('synth'));
